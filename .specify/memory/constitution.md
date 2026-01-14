@@ -1,7 +1,7 @@
 <!--
 Sync Impact Report:
 Version: 0.0.0 → 1.0.0
-Rationale: Initial constitution establishment for k8s-finops-advisor project
+Rationale: Initial constitution establishment for kost (Kubernetes Optimization & Sizing Tool) project
 Modified Principles: N/A (new constitution)
 Added Sections: All sections newly created
 Removed Sections: None
@@ -12,7 +12,7 @@ Templates requiring updates:
 Follow-up TODOs: None
 -->
 
-# k8s-finops-advisor プロジェクト憲章
+# kost (Kubernetes Optimization & Sizing Tool) プロジェクト憲章
 
 ## コア原則
 

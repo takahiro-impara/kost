@@ -1,0 +1,28 @@
+{
+  "status": "success",
+  "data": {
+    "resultType": "matrix",
+    "result": [
+      {
+        "metric": {
+          "__name__": "container_cpu_usage_seconds_total",
+          "namespace": "default",
+          "pod": "test-deployment-7d9f8c6b4d-abc12",
+          "container": "web"
+        },
+        "values": [
+          [1704067200, "0.15"],
+          [1704067500, "0.18"],
+          [1704067800, "0.22"],
+          [1704068100, "0.19"],
+          [1704068400, "0.16"],
+          [1704068700, "0.20"],
+          [1704069000, "0.17"],
+          [1704069300, "0.21"],
+          [1704069600, "0.18"],
+          [1704069900, "0.19"]
+        ]
+      }
+    ]
+  }
+}

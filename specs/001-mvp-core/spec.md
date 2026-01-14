@@ -1,10 +1,10 @@
-# 機能仕様書: k8s-finops-advisor MVPコア機能
+# 機能仕様書: kost (Kubernetes Optimization & Sizing Tool) MVPコア機能
 
 **Feature Branch**: `001-mvp-core`
 **Created**: 2026-01-14
 **Updated**: 2026-01-14
 **Status**: Draft
-**Input**: User description: "k8s-finops-advisor MVPコア機能の実装（HPA最適化、Claude Code LLM対応を含む）"
+**Input**: User description: "kost (Kubernetes Optimization & Sizing Tool) MVPコア機能の実装（HPA最適化、Claude Code LLM対応を含む）"
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -109,6 +109,9 @@ SREは多数のDeploymentがある場合、どこから改善すべきかの優�
 - **HPA用のPod数メトリクスが不足している場合**: HPA推奨は「データ不足」として扱い、現在値のみを記載する
 - **LLMプロバイダのAPI認証情報が未設定の場合**: LLM機能は無効化され、ルールベース説明のみでレポートが生成される
 - **未対応のLLMプロバイダが指定された場合**: エラーメッセージを表示し、対応プロバイダ（openai, claude）をリストする
+- **悪意のある入力（PromQL injection試行）が検出された場合**: システムは入力を拒否し、安全なクエリのみを実行する
+- **出力ディレクトリパスにパストラバーサルが含まれる場合**: システムはエラーを返し、相対パス（../等）を含むパスを拒否する
+- **TLS証明書検証に失敗した場合**: システムは接続を拒否し、証明書検証を無効化するオプション（--insecure-skip-tls-verify）を提供する
 
 ## Requirements *(mandatory)*
 
@@ -140,6 +143,16 @@ SREは多数のDeploymentがある場合、どこから改善すべきかの優�
 - **FR-024**: システムはLLM接続に失敗した場合（ネットワークエラー、認証失敗、API制限等）、ルールベースのフォールバック説明を生成しなければならない
 - **FR-025**: システムはデフォルトでdry-runモードとし、自動的にKubernetesリソースを変更してはならない
 
+### Security Requirements
+
+- **FR-026**: システムは全てのAPI認証情報（LLM APIキー、Kubernetesトークン等）を環境変数から読み込み、設定ファイル、ログ、レポート出力に含めてはならない
+- **FR-027**: システムはPrometheusへのクエリ実行時、ユーザー入力を適切にエスケープし、PromQL injectionを防止しなければならない
+- **FR-028**: システムはファイル出力時、パストラバーサル攻撃を防ぐためパス検証を行い、指定された出力ディレクトリ外への書き込みを禁止しなければならない
+- **FR-029**: システムはKubernetes/Prometheus APIへの接続時、TLS証明書の検証を行い（設定で無効化可能）、中間者攻撃のリスクを軽減しなければならない
+- **FR-030**: システムは最小権限の原則に従い、Kubernetes APIへのアクセスは読み取り専用（get, list）権限のみを要求し、書き込み権限（create, update, delete）を必要としてはならない
+- **FR-031**: システムは依存関係の脆弱性を定期的にスキャンし、既知の脆弱性を含むライブラリの使用を避けなければならない
+- **FR-032**: システムはエラーメッセージやログに、APIキー、トークン、パスワード等の機密情報を含めてはならない
+
 ### Key Entities
 
 - **Deployment**: Kubernetesワークロードの実行単位。Namespace、名前、コンテナリスト、各コンテナのresources設定、関連HPA（任意）を持つ
@@ -168,6 +181,10 @@ SREは多数のDeploymentがある場合、どこから改善すべきかの優�
 - **SC-011**: ユーザーは設定ファイルでLLMプロバイダ（openai、claude等）を選択でき、それぞれ正常に動作する
 - **SC-012**: Claude APIを使用した場合、OpenAI APIと同等の説明品質でレポートが生成される
 - **SC-013**: いずれかのLLMプロバイダでAPI接続に失敗した場合でも、ルールベース説明が生成されレポートは完成する
+- **SC-014**: システムは設定ファイル、ログファイル、レポート出力のいずれにもAPI認証情報を含まない
+- **SC-015**: 静的コード解析（golangci-lint with gosec）がCI/CDパイプラインで実行され、セキュリティ警告がゼロである
+- **SC-016**: 依存関係の脆弱性スキャン（go mod vulnerabilities check）がCI/CDパイプラインで実行され、既知の高/重大脆弱性がゼロである
+- **SC-017**: Kubernetes RBAC設定が最小権限の原則に従い、read-only権限のみで動作する
 
 ## Assumptions
 
@@ -184,3 +201,6 @@ SREは多数のDeploymentがある場合、どこから改善すべきかの優�
 - **LLM API認証**: LLMプロバイダのAPI認証情報（APIキー等）は環境変数で提供され、設定ファイルには含まれない
 - **出力ディレクトリ**: デフォルト`./out`にレポート、パッチ、サマリを出力する
 - **言語**: ドキュメント、レポートは日本語。コード、エラーメッセージは英語（国際化を考慮）
+- **セキュリティ**: API認証情報は環境変数で管理し、設定ファイルに含めない。最小権限の原則に従い、Kubernetes APIへはread-only権限のみでアクセスする
+- **脆弱性管理**: 依存関係は定期的に更新し、既知の脆弱性を含むバージョンの使用を避ける。CI/CDパイプラインで自動スキャンを実施する
+- **入力検証**: 全てのユーザー入力（Namespace名、ラベルセレクタ、出力パス等）は適切にバリデーションし、injection攻撃を防止する

@@ -1,0 +1,14 @@
+prometheus:
+  url: "http://prometheus:9090"
+
+output:
+  dir: "../../etc/passwd"
+
+analysis:
+  cpuPercentile: 0.95
+  memPercentile: 0.95
+  safetyFactor: 1.2
+
+hpa:
+  minReplicasFactor: 0.8
+  maxReplicasFactor: 1.3

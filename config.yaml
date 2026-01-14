@@ -1,0 +1,30 @@
+kube:
+  context: "minikube"
+
+prometheus:
+  url: "http://localhost:9090"
+  timeoutSeconds: 30
+
+analysis:
+  window: "5m"  # ローカル検証では短い期間を使用
+  cpuPercentile: 0.95
+  memPercentile: 0.95
+  safetyFactor: 1.2
+  minCpuMilli: 10
+  minMemMi: 32
+
+filters:
+  namespacesExclude:
+    - kube-system
+    - monitoring
+  labelSelector: ""
+
+output:
+  dir: "./out"
+  format:
+    - md
+    - json
+    - patch
+
+llm:
+  enabled: false
