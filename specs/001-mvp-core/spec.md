@@ -1,281 +1,281 @@
-# 機能仕様書: kost (Kubernetes Optimization & Sizing Tool) MVPコア機能
+# Feature Specification: kost (Kubernetes Optimization & Sizing Tool) MVP Core Features
 
 **Feature Branch**: `001-mvp-core`
 **Created**: 2026-01-14
 **Updated**: 2026-01-15
-**Status**: Implemented (P1-P2 完了、P3-P5 次フェーズ)
-**Input**: User description: "kost (Kubernetes Optimization & Sizing Tool) MVPコア機能の実装（HPA最適化、Claude Code LLM対応を含む）"
+**Status**: Implemented (P1-P2 complete, P3-P5 next phase)
+**Input**: User description: "kost (Kubernetes Optimization & Sizing Tool) MVP core feature implementation (including HPA optimization, Claude Code LLM support)"
 
-**実装状況サマリー**:
-- ✅ User Story 1 (P1): Deploymentリソース最適化 - 実装完了・テスト済み
-- ✅ User Story 2 (P2): YAMLパッチ生成 - 実装完了・テスト済み
-- ⚠️ User Story 3 (P3): HPA最適化 - 次フェーズ対応
-- ⚠️ User Story 4 (P4): 複数LLMプロバイダ - 部分実装（設定のみ、テスト未実施）
-- ⚠️ User Story 5 (P5): AI説明生成 - 部分実装（テスト未実施）
-- ✅ セキュリティ強化: gosec 0件、入力検証97.7%カバレッジ
-- ✅ 単体テスト: 63.8%カバレッジ（目標60%達成）
-- ✅ E2Eテスト: 主要シナリオ合格
+**Implementation Status Summary**:
+- ✅ User Story 1 (P1): Deployment resource optimization - Implementation complete, tested
+- ✅ User Story 2 (P2): YAML patch generation - Implementation complete, tested
+- ⚠️ User Story 3 (P3): HPA optimization - Next phase
+- ⚠️ User Story 4 (P4): Multiple LLM providers - Partial implementation (configuration only, testing incomplete)
+- ⚠️ User Story 5 (P5): AI explanation generation - Partial implementation (testing incomplete)
+- ✅ Security enhancement: gosec 0 issues, input validation 97.7% coverage
+- ✅ Unit tests: 63.8% coverage (60% target achieved)
+- ✅ E2E tests: Main scenarios passing
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Deploymentリソース最適化の分析と推奨値提示 (Priority: P1)
+### User Story 1 - Deployment Resource Optimization Analysis and Recommendations (Priority: P1)
 
-SRE/Platform Engineerは、本番環境のKubernetesクラスタでDeploymentのリソース設定（requests/limits）が過剰または過小になっていないかを確認したい。過剰な設定はコストの無駄につながり、過小な設定はパフォーマンス低下やOOMのリスクを招く。
+SRE/Platform Engineers want to verify whether Deployment resource settings (requests/limits) in production Kubernetes clusters are excessive or insufficient. Excessive settings lead to cost waste, while insufficient settings risk performance degradation and OOM.
 
-ユーザーは対象のNamespaceを指定してスキャンを実行し、メトリクスに基づいた統計分析により、各Deploymentの現状と推奨値を比較したレポートを受け取る。
+Users execute a scan targeting a specific namespace and receive a report comparing current Deployment status with recommended values based on metric-driven statistical analysis.
 
-**Why this priority**: これがMVPの中核機能であり、「具体的な改善提案」という本ツールの差別化要素の実現に必要不可欠である。この機能単体でも価値を提供できる。
+**Why this priority**: This is the core MVP feature and essential for realizing the differentiating factor of "concrete improvement proposals". This feature alone provides value.
 
-**Independent Test**: 対象NamespaceにDeploymentが1つ以上存在し、Prometheusからメトリクスが取得できる状態で、`scan`→`suggest`→`report`コマンドを順次実行し、レポートファイルに推奨値と根拠が記載されていることを確認する。
+**Independent Test**: With at least one Deployment in the target namespace and metrics retrievable from Prometheus, execute `scan`→`suggest`→`report` commands sequentially and verify that the report file contains recommended values and rationale.
 
 **Acceptance Scenarios**:
 
-1. **Given** 本番Namespaceに複数のDeploymentが稼働している、**When** ユーザーがNamespaceを指定してスキャンを実行する、**Then** 全てのDeploymentとコンテナのリソース設定情報が収集される
-2. **Given** スキャンが完了している、**When** 7日間のメトリクスを基にP95統計で推奨値生成を実行する、**Then** 各Deploymentに対する推奨CPU/Memoryリクエスト値が算出され、過剰/過小の判定が行われる
-3. **Given** 推奨値が生成されている、**When** レポート生成を実行する、**Then** Markdownレポートに上位の改善案、根拠（統計値、係数）、削減率が記載される
+1. **Given** multiple Deployments running in production namespace, **When** user executes scan specifying namespace, **Then** resource configuration information for all Deployments and containers is collected
+2. **Given** scan is complete, **When** recommendation generation is executed with P95 statistics based on 7 days of metrics, **Then** recommended CPU/Memory request values are calculated for each Deployment, and over/under-provisioning judgments are made
+3. **Given** recommendations are generated, **When** report generation is executed, **Then** Markdown report contains top improvement proposals, rationale (statistical values, coefficients), and reduction rates
 
 ---
 
-### User Story 2 - 適用可能なYAMLパッチの生成 (Priority: P2)
+### User Story 2 - Applicable YAML Patch Generation (Priority: P2)
 
-SREは推奨値を確認した後、実際にKubernetesマニフェストに適用できる形でパッチファイルを取得したい。手動で値をコピー＆ペーストするのではなく、GitOps運用に組み込める形式で提供されることが望ましい。
+After reviewing recommendations, SREs want to obtain patch files in a form applicable to actual Kubernetes manifests. Rather than manually copying and pasting values, it's desirable to provide them in a format that can be integrated into GitOps operations.
 
-ユーザーはレポート生成時に、推奨値を反映したStrategic Merge Patch形式のYAMLファイルを取得する。
+Users obtain YAML files in Strategic Merge Patch format reflecting recommended values during report generation.
 
-**Why this priority**: 推奨値の提示だけでなく、実際に適用可能なパッチを提供することで、改善提案の実行可能性が高まる。ただし、パッチ適用自体は人間の判断に委ねるため、P1よりは優先度が低い。
+**Why this priority**: Providing not just recommended values but also applicable patches increases the feasibility of implementing improvement proposals. However, since patch application itself is left to human judgment, priority is lower than P1.
 
-**Independent Test**: User Story 1の完了後、`patches/`ディレクトリ配下にNamespaceとDeployment名ごとのYAMLファイルが生成され、その内容が推奨値を反映したStrategic Merge Patch形式になっていることを確認する。
+**Independent Test**: After completing User Story 1, verify that YAML files are generated under the `patches/` directory per namespace and Deployment name, and their contents are in Strategic Merge Patch format reflecting recommended values.
 
 **Acceptance Scenarios**:
 
-1. **Given** 推奨値が生成されている、**When** レポート生成を実行する、**Then** `patches/<namespace>/<deployment>.yaml`の形式でパッチファイルが生成される
-2. **Given** パッチファイルが生成されている、**When** ファイル内容を確認する、**Then** Deployment名、Namespace、コンテナ名、推奨requests値が正しく記載されている
-3. **Given** パッチファイルが生成されている、**When** kubectl applyでパッチを適用する、**Then** Deploymentのresources.requestsが推奨値に更新される（手動テスト）
+1. **Given** recommendations are generated, **When** report generation is executed, **Then** patch files are generated in `patches/<namespace>/<deployment>.yaml` format
+2. **Given** patch files are generated, **When** file contents are reviewed, **Then** Deployment name, namespace, container name, and recommended requests values are correctly listed
+3. **Given** patch files are generated, **When** patch is applied with kubectl apply, **Then** Deployment's resources.requests are updated to recommended values (manual test)
 
 ---
 
-### User Story 3 - HPA設定の最適化推奨 (Priority: P3)
+### User Story 3 - HPA Configuration Optimization Recommendations (Priority: P3)
 
-SREはDeploymentにHPA（Horizontal Pod Autoscaler）が設定されている場合、過去のリソース利用傾向から適切なminReplicas/maxReplicasの値を知りたい。現在の設定が過剰（maxReplicasが大きすぎる）または過小（minReplicasが小さすぎてスパイク対応できない）な場合、コストとパフォーマンスの両面で問題が生じる。
+When HPA (Horizontal Pod Autoscaler) is configured for a Deployment, SREs want to know appropriate minReplicas/maxReplicas values based on historical resource usage trends. If current settings are excessive (maxReplicas too large) or insufficient (minReplicas too small to handle spikes), issues arise in both cost and performance aspects.
 
-ユーザーはスキャン時にHPAが設定されたDeploymentを検出し、過去のPod数の変動傾向（最小/最大/P95等）に基づいて、推奨minReplicas/maxReplicas値をレポートで受け取る。
+Users detect Deployments with HPA configured during scanning and receive recommended minReplicas/maxReplicas values in the report based on historical Pod count fluctuation trends (min/max/P95, etc.).
 
-**Why this priority**: requests/limitsの最適化（P1）と比較すると、HPA最適化は追加的な価値提供である。ただし、オートスケーリング環境では重要な最適化ポイントとなるため、P3として含める。
+**Why this priority**: Compared to requests/limits optimization (P1), HPA optimization provides additional value. However, it's an important optimization point in autoscaling environments, so it's included as P3.
 
-**Independent Test**: 対象NamespaceにHPA設定済みDeploymentが1つ以上存在し、過去7日間のPod数メトリクス（kube_deployment_status_replicas）が取得できる状態で、`scan`→`suggest`→`report`コマンドを実行し、レポートにHPA推奨値（minReplicas/maxReplicas）と根拠が記載されていることを確認する。
+**Independent Test**: With at least one HPA-configured Deployment in the target namespace and Pod count metrics (kube_deployment_status_replicas) for the past 7 days retrievable, execute `scan`→`suggest`→`report` commands and verify that HPA recommendations (minReplicas/maxReplicas) and rationale are included in the report.
 
 **Acceptance Scenarios**:
 
-1. **Given** DeploymentにHPAが設定されている、**When** スキャンを実行する、**Then** 現在のHPA設定（minReplicas/maxReplicas/targetCPU等）が収集される
-2. **Given** HPA設定が収集されている、**When** 7日間のPod数メトリクスを基に推奨値生成を実行する、**Then** 推奨minReplicas（P5統計+余裕）、推奨maxReplicas（P99統計+余裕）が算出される
-3. **Given** HPA推奨値が生成されている、**When** レポート生成を実行する、**Then** レポートに現在値、推奨値、根拠（統計値、余裕係数）、削減/増加効果が記載される
+1. **Given** HPA is configured for Deployment, **When** scan is executed, **Then** current HPA configuration (minReplicas/maxReplicas/targetCPU, etc.) is collected
+2. **Given** HPA configuration is collected, **When** recommendation generation is executed based on 7 days of Pod count metrics, **Then** recommended minReplicas (P5 statistics + margin) and recommended maxReplicas (P99 statistics + margin) are calculated
+3. **Given** HPA recommendations are generated, **When** report generation is executed, **Then** report contains current values, recommended values, rationale (statistical values, margin coefficients), and reduction/increase effects
 
 ---
 
-### User Story 4 - 複数LLMプロバイダ対応（Claude Code含む） (Priority: P4)
+### User Story 4 - Multiple LLM Provider Support (Including Claude Code) (Priority: P4)
 
-SREは組織の方針や予算に応じて、複数のLLMプロバイダを選択できることを望む。特に、Claude Code（Anthropic Claude API）を使用したい場合がある。
+SREs want to be able to select multiple LLM providers according to organizational policy and budget. In particular, there are cases where they want to use Claude Code (Anthropic Claude API).
 
-ユーザーは設定ファイルでLLMプロバイダ（OpenAI、Claude Code等）を選択し、それぞれのAPI仕様に応じた説明生成を受け取る。
+Users select an LLM provider (OpenAI, Claude Code, etc.) in the configuration file and receive explanation generation according to each API specification.
 
-**Why this priority**: LLM機能自体が付加価値（P1, P2はLLMなしでも動作）であり、プロバイダの選択肢拡大はさらなる付加価値のため、P4とする。ただし、柔軟性の観点から実装価値は高い。
+**Why this priority**: LLM functionality itself is added value (P1, P2 work without LLM), and expanding provider options is further added value, so it's P4. However, implementation value is high from a flexibility perspective.
 
-**Independent Test**: 設定ファイルでLLMプロバイダを「openai」または「claude」に設定し、それぞれでレポート生成を実行し、適切なAPI呼び出しが行われ、説明が生成されることを確認する。
+**Independent Test**: Set LLM provider to "openai" or "claude" in configuration file, execute report generation with each, and verify that appropriate API calls are made and explanations are generated.
 
 **Acceptance Scenarios**:
 
-1. **Given** 設定ファイルでLLMプロバイダが「openai」に設定されている、**When** レポート生成を実行する、**Then** OpenAI APIが呼び出され、説明が生成される
-2. **Given** 設定ファイルでLLMプロバイダが「claude」に設定されている、**When** レポート生成を実行する、**Then** Claude API（Anthropic）が呼び出され、説明が生成される
-3. **Given** いずれかのLLMプロバイダが設定されている、**When** API接続に失敗する、**Then** ルールベースのフォールバック説明が生成される
+1. **Given** LLM provider is set to "openai" in configuration file, **When** report generation is executed, **Then** OpenAI API is called and explanation is generated
+2. **Given** LLM provider is set to "claude" in configuration file, **When** report generation is executed, **Then** Claude API (Anthropic) is called and explanation is generated
+3. **Given** either LLM provider is configured, **When** API connection fails, **Then** rule-based fallback explanation is generated
 
 ---
 
-### User Story 5 - 生成AIによる説明と優先順位付け (Priority: P5)
+### User Story 5 - AI-Powered Explanations and Prioritization (Priority: P5)
 
-SREは多数のDeploymentがある場合、どこから改善すべきかの優先順位と、なぜその推奨が行われているのかの自然言語による説明を受け取りたい。統計値だけでなく、文脈を含めた説明があると判断がしやすくなる。
+When there are many Deployments, SREs want to receive prioritization of where to improve first, and natural language explanations of why those recommendations are made. Having explanations with context, not just statistical values, makes judgment easier.
 
-ユーザーはレポート生成時にLLMオプションを有効化し、推奨の優先順位付けと自然言語での説明をレポートに含める。
+Users enable the LLM option during report generation to include prioritization of recommendations and natural language explanations in the report.
 
-**Why this priority**: AIによる説明は付加価値ではあるが、推奨値自体は統計とルールで算出されるため、必須ではない。MVP段階では「あると便利」な機能として位置付ける。User Story 3, 4がHPA最適化とLLMプロバイダ選択に再配置されたため、優先度をP5に変更。
+**Why this priority**: AI-powered explanations are added value, but since recommended values themselves are calculated by statistics and rules, they're not essential. In the MVP stage, positioned as a "nice to have" feature. Since User Story 3, 4 have been reassigned to HPA optimization and LLM provider selection, priority changed to P5.
 
-**Independent Test**: User Story 1, 2の完了後、LLMオプション有効でレポート生成を実行し、レポートに優先順位付けされた改善案と自然言語での説明（理由、注意点）が含まれていることを確認する。LLM接続に失敗した場合、フォールバックとしてルールベースの説明が出力されることを確認する。
+**Independent Test**: After completing User Story 1, 2, execute report generation with LLM option enabled and verify that the report contains prioritized improvement proposals and natural language explanations (reasons, notes). When LLM connection fails, verify that rule-based explanations are output as fallback.
 
 **Acceptance Scenarios**:
 
-1. **Given** LLMオプションが有効化されている、**When** レポート生成を実行する、**Then** レポートに「影響大」「リスク大」などの優先順位付けが記載される
-2. **Given** LLMオプションが有効化されている、**When** レポート生成を実行する、**Then** 各推奨に対して「なぜ無駄か」「どう直すか」「注意点」の説明が自然言語で記載される
-3. **Given** LLM接続に失敗した、**When** レポート生成を実行する、**Then** ルールベースのフォールバック説明がレポートに記載される
+1. **Given** LLM option is enabled, **When** report generation is executed, **Then** report contains prioritization such as "High Impact", "High Risk"
+2. **Given** LLM option is enabled, **When** report generation is executed, **Then** each recommendation has natural language explanations for "Why wasteful", "How to fix", "Notes"
+3. **Given** LLM connection failed, **When** report generation is executed, **Then** rule-based fallback explanation is included in report
 
 ---
 
 ### Edge Cases
 
-- **Prometheusメトリクスが取得できない場合**: システムはエラーメッセージを表示し、必要なメトリクス（container_cpu_usage_seconds_total, container_memory_working_set_bytes, kube_deployment_status_replicas）と確認手順（Prometheus接続先、クエリの検証方法）を提示する
-- **対象Namespaceに一切のDeploymentが存在しない場合**: スキャン結果は空となり、レポートにも「対象リソースなし」と記載される
-- **現在のrequestsが未設定（null）の場合**: システムは「未設定」として扱い、推奨値のみを提示する（過剰/過小判定は行わない）
-- **P95統計値が極端に小さい場合**: 最小値（minCpuMilli=20m, minMemMi=64Mi）が適用され、推奨値がこれを下回らないようにする
-- **RBAC権限不足でK8s APIにアクセスできない場合**: システムはエラーメッセージを表示し、必要な権限（Deployment/Pod/HPA/Namespaceの読み取り専用）をドキュメントに記載する
-- **HPAが設定されていないDeploymentの場合**: HPA推奨値のセクションはスキップされ、requests/limitsの推奨のみが提示される
-- **HPA用のPod数メトリクスが不足している場合**: HPA推奨は「データ不足」として扱い、現在値のみを記載する
-- **LLMプロバイダのAPI認証情報が未設定の場合**: LLM機能は無効化され、ルールベース説明のみでレポートが生成される
-- **未対応のLLMプロバイダが指定された場合**: エラーメッセージを表示し、対応プロバイダ（openai, claude）をリストする
-- **悪意のある入力（PromQL injection試行）が検出された場合**: システムは入力を拒否し、安全なクエリのみを実行する
-- **出力ディレクトリパスにパストラバーサルが含まれる場合**: システムはエラーを返し、相対パス（../等）を含むパスを拒否する
-- **TLS証明書検証に失敗した場合**: システムは接続を拒否し、証明書検証を無効化するオプション（--insecure-skip-tls-verify）を提供する
+- **When Prometheus metrics cannot be retrieved**: System displays error message and presents required metrics (container_cpu_usage_seconds_total, container_memory_working_set_bytes, kube_deployment_status_replicas) and verification procedures (Prometheus connection destination, query validation method)
+- **When no Deployments exist in target namespace**: Scan results are empty and report indicates "No target resources"
+- **When current requests are unset (null)**: System treats as "unset" and presents only recommended values (no over/under-provisioning judgment)
+- **When P95 statistical value is extremely small**: Minimum values (minCpuMilli=20m, minMemMi=64Mi) are applied, ensuring recommended values don't fall below these
+- **When K8s API cannot be accessed due to insufficient RBAC permissions**: System displays error message and documents required permissions (read-only for Deployment/Pod/HPA/Namespaces)
+- **When Deployment has no HPA configured**: HPA recommendation section is skipped, only requests/limits recommendations are presented
+- **When Pod count metrics for HPA are insufficient**: HPA recommendation is treated as "insufficient data", only current values are listed
+- **When LLM provider API credentials are unset**: LLM functionality is disabled and report is generated with rule-based explanations only
+- **When unsupported LLM provider is specified**: Error message is displayed listing supported providers (openai, claude)
+- **When malicious input (PromQL injection attempt) is detected**: System rejects input and executes only safe queries
+- **When output directory path contains path traversal**: System returns error and rejects paths containing relative paths (../, etc.)
+- **When TLS certificate verification fails**: System rejects connection and provides option to disable certificate verification (--insecure-skip-tls-verify)
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: システムはKubernetes APIに接続し、指定されたNamespace内の全Deploymentリソースの情報を取得できなければならない
-- **FR-002**: システムは各Deploymentの全コンテナに設定されたCPU/Memory requests/limitsを抽出できなければならない
-- **FR-003**: システムはPrometheusエンドポイントに接続し、指定期間（デフォルト7日間）のCPU使用率とMemory使用量メトリクスを取得できなければならない
-- **FR-004**: システムは取得したメトリクスからP50/P95/P99パーセンタイル統計を算出できなければならない
-- **FR-005**: システムは統計値とセーフティファクター（デフォルト1.2）を用いて、推奨CPU/Memory requests値を算出できなければならない
-- **FR-006**: システムは現在のrequests値と推奨値を比較し、過剰（current > Pxx * 2.0）または過小（current < Pxx * 1.1）を判定できなければならない
-- **FR-007**: システムは推奨値と現在値の差から、CPU/Memory削減率（%）を計算できなければならない
-- **FR-008**: システムはMarkdown形式のレポートファイル（report.md）を生成し、上位の改善案、理由、削減率、注意点を記載できなければならない
-- **FR-009**: システムはStrategic Merge Patch形式のYAMLファイルを`patches/<namespace>/<deployment>.yaml`の構造で生成できなければならない
-- **FR-010**: システムは機械可読なJSON形式のサマリファイル（summary.json）を生成し、将来の自動化連携に備えなければならない
-- **FR-011**: システムは設定ファイル（config.yaml）から、Kubernetes context、Prometheusエンドポイント、分析期間、パーセンタイル、セーフティファクター、最小値、除外Namespace、出力形式を読み込めなければならない
-- **FR-012**: ユーザーはCLIコマンドでスキャン（scan）、推奨値生成（suggest）、レポート生成（report）を個別に実行できなければならない
-- **FR-013**: システムはKubernetes APIに接続し、指定されたNamespace内のHPA（HorizontalPodAutoscaler）リソースの情報を取得できなければならない
-- **FR-014**: システムは各HPAに対して、現在のminReplicas、maxReplicas、targetCPUUtilizationPercentage（または他のメトリクス）を抽出できなければならない
-- **FR-015**: システムはPrometheusエンドポイントに接続し、指定期間（デフォルト7日間）の実際のPod数（kube_deployment_status_replicas）メトリクスを取得できなければならない
-- **FR-016**: システムは取得したPod数メトリクスからP5/P50/P99パーセンタイル統計を算出できなければならない
-- **FR-017**: システムはPod数統計と余裕係数（例：minは0.8倍、maxは1.3倍）を用いて、推奨minReplicas/maxReplicasを算出できなければならない
-- **FR-018**: システムは現在のHPA設定と推奨値を比較し、過剰（maxが大きすぎる）または過小（minが小さすぎる）を判定できなければならない
-- **FR-019**: システムはHPA推奨値をレポート（report.md）とパッチファイル（patches/<namespace>/<deployment>-hpa.yaml）に含めて出力できなければならない
-- **FR-020**: システムは設定ファイルまたは環境変数からLLMプロバイダ（openai, claude等）を読み込めなければならない
-- **FR-021**: システムは選択されたLLMプロバイダに応じて、適切なAPI仕様（OpenAI Chat Completions、Anthropic Messages等）で構造化データを送信できなければならない
-- **FR-022**: システムはLLMプロバイダがOpenAIの場合、OpenAI Chat Completions API（GPT-4等）を呼び出し、優先順位付けと自然言語説明を取得できなければならない
-- **FR-023**: システムはLLMプロバイダがClaudeの場合、Anthropic Messages API（Claude 3.5 Sonnet等）を呼び出し、優先順位付けと自然言語説明を取得できなければならない
-- **FR-024**: システムはLLM接続に失敗した場合（ネットワークエラー、認証失敗、API制限等）、ルールベースのフォールバック説明を生成しなければならない
-- **FR-025**: システムはデフォルトでdry-runモードとし、自動的にKubernetesリソースを変更してはならない
+- **FR-001**: System must be able to connect to Kubernetes API and retrieve information for all Deployment resources in specified namespace
+- **FR-002**: System must be able to extract CPU/Memory requests/limits configured for all containers in each Deployment
+- **FR-003**: System must be able to connect to Prometheus endpoint and retrieve CPU usage rate and Memory usage metrics for specified period (default 7 days)
+- **FR-004**: System must be able to calculate P50/P95/P99 percentile statistics from retrieved metrics
+- **FR-005**: System must be able to calculate recommended CPU/Memory requests values using statistical values and safety factor (default 1.2)
+- **FR-006**: System must be able to compare current requests values with recommended values and judge over-provisioning (current > Pxx * 2.0) or under-provisioning (current < Pxx * 1.1)
+- **FR-007**: System must be able to calculate CPU/Memory reduction rate (%) from difference between recommended values and current values
+- **FR-008**: System must be able to generate Markdown format report file (report.md) listing top improvement proposals, reasons, reduction rates, and notes
+- **FR-009**: System must be able to generate YAML files in Strategic Merge Patch format in `patches/<namespace>/<deployment>.yaml` structure
+- **FR-010**: System must be able to generate machine-readable JSON format summary file (summary.json) for future automation integration
+- **FR-011**: System must be able to read from configuration file (config.yaml): Kubernetes context, Prometheus endpoint, analysis period, percentile, safety factor, minimum values, excluded namespaces, output format
+- **FR-012**: Users must be able to independently execute CLI commands for scan, recommendation generation (suggest), and report generation (report)
+- **FR-013**: System must be able to connect to Kubernetes API and retrieve HPA (HorizontalPodAutoscaler) resource information in specified namespace
+- **FR-014**: System must be able to extract current minReplicas, maxReplicas, targetCPUUtilizationPercentage (or other metrics) for each HPA
+- **FR-015**: System must be able to connect to Prometheus endpoint and retrieve actual Pod count (kube_deployment_status_replicas) metrics for specified period (default 7 days)
+- **FR-016**: System must be able to calculate P5/P50/P99 percentile statistics from retrieved Pod count metrics
+- **FR-017**: System must be able to calculate recommended minReplicas/maxReplicas using Pod count statistics and margin coefficients (e.g., min 0.8x, max 1.3x)
+- **FR-018**: System must be able to compare current HPA configuration with recommended values and judge over-provisioning (max too large) or under-provisioning (min too small)
+- **FR-019**: System must be able to output HPA recommendations in report (report.md) and patch files (patches/<namespace>/<deployment>-hpa.yaml)
+- **FR-020**: System must be able to read LLM provider (openai, claude, etc.) from configuration file or environment variables
+- **FR-021**: System must be able to send structured data according to appropriate API specifications (OpenAI Chat Completions, Anthropic Messages, etc.) based on selected LLM provider
+- **FR-022**: When LLM provider is OpenAI, system must be able to call OpenAI Chat Completions API (GPT-4, etc.) and retrieve prioritization and natural language explanations
+- **FR-023**: When LLM provider is Claude, system must be able to call Anthropic Messages API (Claude 3.5 Sonnet, etc.) and retrieve prioritization and natural language explanations
+- **FR-024**: When LLM connection fails (network error, authentication failure, API limits, etc.), system must generate rule-based fallback explanations
+- **FR-025**: System must default to dry-run mode and not automatically modify Kubernetes resources
 
 ### Security Requirements
 
-- **FR-026**: システムは全てのAPI認証情報（LLM APIキー、Kubernetesトークン等）を環境変数から読み込み、設定ファイル、ログ、レポート出力に含めてはならない
-- **FR-027**: システムはPrometheusへのクエリ実行時、ユーザー入力を適切にエスケープし、PromQL injectionを防止しなければならない
-- **FR-028**: システムはファイル出力時、パストラバーサル攻撃を防ぐためパス検証を行い、指定された出力ディレクトリ外への書き込みを禁止しなければならない
-- **FR-029**: システムはKubernetes/Prometheus APIへの接続時、TLS証明書の検証を行い（設定で無効化可能）、中間者攻撃のリスクを軽減しなければならない
-- **FR-030**: システムは最小権限の原則に従い、Kubernetes APIへのアクセスは読み取り専用（get, list）権限のみを要求し、書き込み権限（create, update, delete）を必要としてはならない
-- **FR-031**: システムは依存関係の脆弱性を定期的にスキャンし、既知の脆弱性を含むライブラリの使用を避けなければならない
-- **FR-032**: システムはエラーメッセージやログに、APIキー、トークン、パスワード等の機密情報を含めてはならない
+- **FR-026**: System must read all API credentials (LLM API keys, Kubernetes tokens, etc.) from environment variables and must not include them in configuration files, logs, or report outputs
+- **FR-027**: When executing Prometheus queries, system must properly escape user input to prevent PromQL injection
+- **FR-028**: When outputting files, system must validate paths to prevent path traversal attacks and prohibit writing outside specified output directory
+- **FR-029**: When connecting to Kubernetes/Prometheus APIs, system must verify TLS certificates (can be disabled in configuration) to mitigate man-in-the-middle attack risks
+- **FR-030**: Following principle of least privilege, system must request only read-only (get, list) permissions for Kubernetes API access and must not require write permissions (create, update, delete)
+- **FR-031**: System must periodically scan dependency vulnerabilities and avoid using libraries with known vulnerabilities
+- **FR-032**: System must not include sensitive information such as API keys, tokens, passwords in error messages or logs
 
 ### Key Entities
 
-- **Deployment**: Kubernetesワークロードの実行単位。Namespace、名前、コンテナリスト、各コンテナのresources設定、関連HPA（任意）を持つ
-- **Container**: Deployment内の実行コンテナ。名前、CPU/Memory requests、CPU/Memory limitsを持つ
-- **HPA（HorizontalPodAutoscaler）**: Deployment のオートスケーリング設定。minReplicas、maxReplicas、targetメトリクス（CPU利用率等）、関連Deploymentを持つ
-- **Metrics**: Prometheusから取得した時系列メトリクス。期間、パーセンタイル統計（P50/P95/P99）、対象コンテナまたはDeployment（Pod数）への紐付けを持つ
-- **ResourceRecommendation**: リソース（requests/limits）の推奨値算出結果。対象Deployment/Container、現状requests、推奨requests、判定（過剰/過小/適正）、削減率、根拠（統計値、係数）を持つ
-- **HPARecommendation**: HPA設定の推奨値算出結果。対象HPA/Deployment、現状minReplicas/maxReplicas、推奨minReplicas/maxReplicas、判定（過剰/過小/適正）、削減/増加効果、根拠（Pod数統計、余裕係数）を持つ
-- **LLMProvider**: LLMプロバイダの抽象化。名前（openai, claude等）、API仕様、認証情報、エンドポイントを持つ
-- **Report**: 最終出力物。Markdownレポート、YAMLパッチファイル群（Deployment resources、HPA設定）、JSONサマリを含む
+- **Deployment**: Kubernetes workload execution unit. Has namespace, name, container list, resources configuration for each container, associated HPA (optional)
+- **Container**: Execution container within Deployment. Has name, CPU/Memory requests, CPU/Memory limits
+- **HPA (HorizontalPodAutoscaler)**: Deployment autoscaling configuration. Has minReplicas, maxReplicas, target metrics (CPU utilization, etc.), associated Deployment
+- **Metrics**: Time-series metrics retrieved from Prometheus. Has period, percentile statistics (P50/P95/P99), association to target container or Deployment (Pod count)
+- **ResourceRecommendation**: Resource (requests/limits) recommendation calculation result. Has target Deployment/Container, current requests, recommended requests, judgment (over/under/appropriate), reduction rate, rationale (statistical values, coefficients)
+- **HPARecommendation**: HPA configuration recommendation calculation result. Has target HPA/Deployment, current minReplicas/maxReplicas, recommended minReplicas/maxReplicas, judgment (over/under/appropriate), reduction/increase effect, rationale (Pod count statistics, margin coefficients)
+- **LLMProvider**: LLM provider abstraction. Has name (openai, claude, etc.), API specification, credentials, endpoint
+- **Report**: Final output. Includes Markdown report, YAML patch file collection (Deployment resources, HPA configuration), JSON summary
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: ユーザーは10分以内にツールをインストールし、最初のレポートを生成できる（README Quickstartに従う）
-- **SC-002**: システムは対象Namespace内の少なくとも1つのDeploymentに対して、根拠付き推奨値（統計値、係数、推奨値、削減率）を提示できる
-- **SC-003**: 生成されたレポートには、推奨値の算出根拠（使用したパーセンタイル、セーフティファクター、丸め処理）が明記されている
-- **SC-004**: 生成されたYAMLパッチファイルは、kubectl applyで直接適用可能な形式である
-- **SC-005**: システムはPrometheusまたはKubernetes APIへのアクセスに失敗した場合、エラー内容と確認手順を具体的に提示する
-- **SC-006**: システムは最小3つのCLIコマンド（scan/suggest/report）をサポートし、各コマンドは独立して実行できる
-- **SC-007**: LLMオプションを無効化した場合でも、統計ベースの推奨値とレポートが正常に生成される
-- **SC-008**: 推奨値算出ロジック（統計+ルール）はユニットテストでカバーされ、再現性が担保されている
-- **SC-009**: HPA設定済みDeploymentに対して、過去のPod数傾向に基づくminReplicas/maxReplicas推奨値が提示される
-- **SC-010**: HPA推奨値のレポートには、Pod数統計（P5/P99等）と余裕係数が明記されている
-- **SC-011**: ユーザーは設定ファイルでLLMプロバイダ（openai、claude等）を選択でき、それぞれ正常に動作する
-- **SC-012**: Claude APIを使用した場合、OpenAI APIと同等の説明品質でレポートが生成される
-- **SC-013**: いずれかのLLMプロバイダでAPI接続に失敗した場合でも、ルールベース説明が生成されレポートは完成する
-- **SC-014**: システムは設定ファイル、ログファイル、レポート出力のいずれにもAPI認証情報を含まない
-- **SC-015**: 静的コード解析（golangci-lint with gosec）がCI/CDパイプラインで実行され、セキュリティ警告がゼロである
-- **SC-016**: 依存関係の脆弱性スキャン（go mod vulnerabilities check）がCI/CDパイプラインで実行され、既知の高/重大脆弱性がゼロである
-- **SC-017**: Kubernetes RBAC設定が最小権限の原則に従い、read-only権限のみで動作する
+- **SC-001**: Users can install tool and generate first report within 10 minutes (following README Quickstart)
+- **SC-002**: System can present recommended values with rationale (statistical values, coefficients, recommended values, reduction rates) for at least one Deployment in target namespace
+- **SC-003**: Generated reports clearly state calculation rationale for recommended values (percentile used, safety factor, rounding)
+- **SC-004**: Generated YAML patch files are in format directly applicable with kubectl apply
+- **SC-005**: When access to Prometheus or Kubernetes API fails, system specifically presents error content and verification procedures
+- **SC-006**: System supports at least 3 CLI commands (scan/suggest/report), each executable independently
+- **SC-007**: When LLM option is disabled, statistics-based recommended values and reports are generated normally
+- **SC-008**: Recommendation calculation logic (statistics + rules) is covered by unit tests with reproducibility guaranteed
+- **SC-009**: For HPA-configured Deployments, minReplicas/maxReplicas recommendations based on historical Pod count trends are presented
+- **SC-010**: HPA recommendation reports clearly state Pod count statistics (P5/P99, etc.) and margin coefficients
+- **SC-011**: Users can select LLM provider (openai, claude, etc.) in configuration file, and each works normally
+- **SC-012**: When using Claude API, reports are generated with explanation quality equivalent to OpenAI API
+- **SC-013**: Even when API connection fails with any LLM provider, rule-based explanations are generated and report is completed
+- **SC-014**: System does not include API credentials in configuration files, log files, or report outputs
+- **SC-015**: Static code analysis (golangci-lint with gosec) is executed in CI/CD pipeline with zero security warnings
+- **SC-016**: Dependency vulnerability scanning (go mod vulnerabilities check) is executed in CI/CD pipeline with zero known high/critical vulnerabilities
+- **SC-017**: Kubernetes RBAC configuration follows principle of least privilege and operates with read-only permissions only
 
 ## Assumptions
 
-本仕様では以下の前提を置いています：
+This specification makes the following assumptions:
 
-- **Prometheusの前提**: クラスタ内にPrometheus（またはPrometheus互換メトリクスストア）が導入済みで、container_cpu_usage_seconds_total、container_memory_working_set_bytes、kube_deployment_status_replicasのメトリクスが取得可能
-- **RBAC権限**: ツールを実行するユーザー/ServiceAccountは、対象NamespaceのDeployment/Pod/HPAに対する読み取り権限を持つ
-- **ワークロード種別**: MVP段階ではDeploymentのみを対象とし、StatefulSet、DaemonSet、Job等は対象外
-- **HPA設定**: HPA設定がない Deploymentも正常に処理され、その場合はHPA推奨値セクションはスキップされる
-- **メトリクス期間**: デフォルト7日間のメトリクスで十分な統計精度が得られる
-- **パーセンタイル選択**: requests/limitsはP95をデフォルト、HPAのminReplicasはP5、maxReplicasはP99をデフォルトとする
-- **セーフティファクター**: requests/limitsは1.2倍、HPAのminReplicasは0.8倍、maxReplicasは1.3倍をデフォルトとする
-- **LLMプロバイダ**: OpenAI（GPT-4等）とClaude（Claude 3.5 Sonnet等）の2つのプロバイダをサポートし、設定ファイルまたは環境変数で選択可能
-- **LLM API認証**: LLMプロバイダのAPI認証情報（APIキー等）は環境変数で提供され、設定ファイルには含まれない
-- **出力ディレクトリ**: デフォルト`./out`にレポート、パッチ、サマリを出力する
-- **言語**: ドキュメント、レポートは日本語。コード、エラーメッセージは英語（国際化を考慮）
-- **セキュリティ**: API認証情報は環境変数で管理し、設定ファイルに含めない。最小権限の原則に従い、Kubernetes APIへはread-only権限のみでアクセスする
-- **脆弱性管理**: 依存関係は定期的に更新し、既知の脆弱性を含むバージョンの使用を避ける。CI/CDパイプラインで自動スキャンを実施する
-- **入力検証**: 全てのユーザー入力（Namespace名、ラベルセレクタ、出力パス等）は適切にバリデーションし、injection攻撃を防止する
+- **Prometheus prerequisite**: Prometheus (or Prometheus-compatible metrics store) is deployed in cluster with container_cpu_usage_seconds_total, container_memory_working_set_bytes, kube_deployment_status_replicas metrics retrievable
+- **RBAC permissions**: User/ServiceAccount executing tool has read permissions for Deployment/Pod/HPA in target namespace
+- **Workload types**: MVP stage targets only Deployments, excluding StatefulSet, DaemonSet, Job, etc.
+- **HPA configuration**: Deployments without HPA configuration are processed normally, HPA recommendation section is skipped in such cases
+- **Metrics period**: Default 7 days of metrics provides sufficient statistical accuracy
+- **Percentile selection**: Default P95 for requests/limits, P5 for HPA minReplicas, P99 for maxReplicas
+- **Safety factors**: Default 1.2x for requests/limits, 0.8x for HPA minReplicas, 1.3x for maxReplicas
+- **LLM providers**: Support two providers OpenAI (GPT-4, etc.) and Claude (Claude 3.5 Sonnet, etc.), selectable via configuration file or environment variables
+- **LLM API authentication**: LLM provider API credentials (API keys, etc.) are provided via environment variables and not included in configuration files
+- **Output directory**: Default output to `./out` for reports, patches, summary
+- **Language**: Documentation and reports in Japanese. Code and error messages in English (considering internationalization)
+- **Security**: Manage API credentials via environment variables, not in configuration files. Follow principle of least privilege, access Kubernetes API with read-only permissions only
+- **Vulnerability management**: Update dependencies regularly, avoid using versions with known vulnerabilities. Implement automatic scanning in CI/CD pipeline
+- **Input validation**: Properly validate all user inputs (namespace names, label selectors, output paths, etc.) to prevent injection attacks
 
 ---
 
-## セキュリティ実装詳細
+## Security Implementation Details
 
-### 実装済みセキュリティ機能
+### Implemented Security Features
 
-#### 1. 入力検証（internal/security/validation.go）
+#### 1. Input Validation (internal/security/validation.go)
 
-**実装内容**: 全てのユーザー入力を検証し、injection攻撃を防止
+**Implementation**: Validate all user inputs to prevent injection attacks
 
-- **ValidateNamespace**: Kubernetes命名規則に準拠したNamespace検証
-  - 空文字列の拒否
-  - 大文字・特殊文字の拒否
-  - 長さ制限（63文字）
-  - 正規表現: `^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
+- **ValidateNamespace**: Namespace validation compliant with Kubernetes naming conventions
+  - Reject empty strings
+  - Reject uppercase and special characters
+  - Length limit (63 characters)
+  - Regex: `^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
 
-- **ValidateLabelSelector**: Label selector injection防止
-  - 引用符（'/"）の拒否
-  - セミコロン（;）の拒否
-  - その他の特殊文字の拒否
+- **ValidateLabelSelector**: Label selector injection prevention
+  - Reject quotation marks (' / ")
+  - Reject semicolons (;)
+  - Reject other special characters
 
-- **ValidatePrometheusURL**: URL検証
-  - http/httpsスキームのみ許可
-  - 特殊文字の拒否
-  - 空文字列の拒否
+- **ValidatePrometheusURL**: URL validation
+  - Allow only http/https schemes
+  - Reject special characters
+  - Reject empty strings
 
-- **ValidateOutputPath**: パストラバーサル攻撃防止
-  - `..`パターンの検出と拒否
-  - センシティブディレクトリへのアクセス防止（/etc, /root, /sys, /proc, /dev）
+- **ValidateOutputPath**: Path traversal attack prevention
+  - Detect and reject `..` patterns
+  - Prevent access to sensitive directories (/etc, /root, /sys, /proc, /dev)
 
-- **SanitizePromQLQuery**: PromQL injection防止
-  - SQLインジェクション的なパターンの検出（;, --, /*, */）
-  - クエリのサニタイゼーション
+- **SanitizePromQLQuery**: PromQL injection prevention
+  - Detect SQL injection-like patterns (;, --, /*, */)
+  - Query sanitization
 
-- **MaskSensitiveValue**: ログ出力時のAPI keyマスキング
-  - 8文字以下: 完全マスク（`***`）
-  - 9文字以上: 先頭4文字と末尾4文字のみ表示（`sk-1...cdef`）
+- **MaskSensitiveValue**: API key masking for log output
+  - 8 characters or less: Full mask (`***`)
+  - 9 characters or more: Show only first 4 and last 4 characters (`sk-1...cdef`)
 
-**テストカバレッジ**: 97.7% (internal/security/validation_test.go)
+**Test Coverage**: 97.7% (internal/security/validation_test.go)
 
-#### 2. ファイルパーミッション（gosec準拠）
+#### 2. File Permissions (gosec compliant)
 
-**実装内容**: セキュアなファイル・ディレクトリパーミッション設定
+**Implementation**: Secure file and directory permission settings
 
-- **ディレクトリ作成**: 0750 (owner: rwx, group: r-x, other: ---)
-- **ファイル作成**: 0600 (owner: rw-, group: ---, other: ---)
-- **適用箇所**: internal/report/writer.go
+- **Directory creation**: 0750 (owner: rwx, group: r-x, other: ---)
+- **File creation**: 0600 (owner: rw-, group: ---, other: ---)
+- **Applied in**: internal/report/writer.go
 
-#### 3. API認証情報管理
+#### 3. API Credential Management
 
-**実装内容**: 環境変数のみでAPI認証情報を管理
+**Implementation**: Manage API credentials via environment variables only
 
-- **Kubernetes**: kubeconfigファイルまたはin-cluster認証
-- **OpenAI**: `OPENAI_API_KEY` 環境変数
-- **Claude**: `ANTHROPIC_API_KEY` 環境変数
-- **検証**: 設定ファイル読み込み時に環境変数の存在チェック（internal/config/config.go）
-- **禁止事項**: 設定ファイルに認証情報を含めない
+- **Kubernetes**: kubeconfig file or in-cluster authentication
+- **OpenAI**: `OPENAI_API_KEY` environment variable
+- **Claude**: `ANTHROPIC_API_KEY` environment variable
+- **Validation**: Check environment variable existence when loading configuration file (internal/config/config.go)
+- **Prohibited**: Including credentials in configuration files
 
-#### 4. RBAC最小権限
+#### 4. RBAC Least Privilege
 
-**実装内容**: 読み取り専用権限のみ使用
+**Implementation**: Use read-only permissions only
 
 ```yaml
 # examples/rbac.yaml
@@ -294,26 +294,26 @@ rules:
   verbs: ["get", "list"]
 ```
 
-**禁止操作**: create, update, delete, patch
+**Prohibited operations**: create, update, delete, patch
 
-### セキュリティテスト結果
+### Security Test Results
 
-#### gosec（静的セキュリティ解析）
-- **スキャンファイル数**: 21ファイル
-- **スキャンコード行数**: 2,226行
-- **検出問題**: 0件 ✅
+#### gosec (Static Security Analysis)
+- **Files scanned**: 21 files
+- **Lines of code scanned**: 2,226 lines
+- **Issues detected**: 0 ✅
 
-#### govulncheck（脆弱性スキャン）
-- **Go依存関係**: 脆弱性なし ✅
-- **Go標準ライブラリ**: 2件検出 ⚠️
-  - GO-2025-4175: crypto/x509 DNS制約の不適切な適用
-  - GO-2025-4155: crypto/x509 証明書検証時のリソース消費
-  - **対策**: Go 1.25.5以上へのアップグレード推奨
-  - **リスク**: 低（信頼できるPrometheus URLのみに接続）
+#### govulncheck (Vulnerability Scan)
+- **Go dependencies**: No vulnerabilities ✅
+- **Go standard library**: 2 detected ⚠️
+  - GO-2025-4175: Improper application of DNS constraints in crypto/x509
+  - GO-2025-4155: Resource consumption during crypto/x509 certificate verification
+  - **Mitigation**: Upgrade to Go 1.25.5 or later recommended
+  - **Risk**: Low (connects only to trusted Prometheus URLs)
 
-### .gitignore設定
+### .gitignore Configuration
 
-**機密情報の除外**:
+**Excluding sensitive information**:
 ```gitignore
 # Configuration files with potential secrets
 config.yaml
@@ -333,43 +333,43 @@ gosec-report*.json
 trivy-report*.txt
 ```
 
-### 推奨セキュリティプラクティス
+### Recommended Security Practices
 
-#### 本番環境での使用
-1. **Go version**: 1.25.5以上を使用（crypto/x509脆弱性対策）
-2. **RBAC**: read-only権限のServiceAccountを使用
-3. **API keys**: 環境変数で管理、絶対に設定ファイルに含めない
-4. **TLS**: Prometheus接続時はTLS証明書検証を有効化（デフォルト）
-5. **ログ**: 本番環境ではセンシティブ情報がログに出力されないことを確認
+#### Production Use
+1. **Go version**: Use 1.25.5 or later (crypto/x509 vulnerability mitigation)
+2. **RBAC**: Use read-only ServiceAccount
+3. **API keys**: Manage via environment variables, never include in configuration files
+4. **TLS**: Enable TLS certificate verification for Prometheus connections (default)
+5. **Logs**: Verify sensitive information is not output to logs in production
 
-#### 開発環境
-1. **セキュリティスキャン**: コミット前にgosecを実行
-2. **依存関係チェック**: 定期的にgovulncheckを実行
-3. **テストカバレッジ**: セキュリティ関連コードは90%以上を目標
+#### Development Environment
+1. **Security scanning**: Run gosec before commits
+2. **Dependency checking**: Run govulncheck regularly
+3. **Test coverage**: Target 90%+ for security-related code
 
-#### CI/CD統合
+#### CI/CD Integration
 ```yaml
-# GitHub Actions例
+# GitHub Actions example
 - name: Security Scan
   run: |
     gosec ./...
     govulncheck ./...
 ```
 
-### 既知の制限事項
+### Known Limitations
 
-1. **minikube環境**: containerラベルが不足（対応済み、id=~".*/.*"フィルタ使用）
-2. **Go標準ライブラリ脆弱性**: Go 1.25.5へのアップグレードで解決
-3. **TLS無効化**: 設定で可能だが、本番環境では非推奨
+1. **minikube environment**: Insufficient container labels (addressed, using id=~".*/.*" filter)
+2. **Go standard library vulnerabilities**: Resolved by upgrading to Go 1.25.5
+3. **TLS disabling**: Possible via configuration but not recommended for production
 
-### セキュリティドキュメント
+### Security Documentation
 
-- [SECURITY_TEST_PLAN.md](../../SECURITY_TEST_PLAN.md) - 包括的なセキュリティチェックリスト
-- [TEST_RESULTS.md](../../TEST_RESULTS.md) - セキュリティスキャン結果詳細
-- [E2E_TEST_PLAN.md](../../E2E_TEST_PLAN.md) - セキュリティ関連E2Eテスト
+- [SECURITY_TEST_PLAN.md](../../SECURITY_TEST_PLAN.md) - Comprehensive security checklist
+- [TEST_RESULTS.md](../../TEST_RESULTS.md) - Detailed security scan results
+- [E2E_TEST_PLAN.md](../../E2E_TEST_PLAN.md) - Security-related E2E tests
 
 ---
 
-**最終更新**: 2026-01-15
-**セキュリティレビュー**: 完了 ✅
-**OSS公開準備**: 完了 ✅
+**Last Updated**: 2026-01-15
+**Security Review**: Complete ✅
+**OSS Publication Readiness**: Complete ✅

@@ -1,91 +1,91 @@
-# クイックスタートガイド: kost (Kubernetes Optimization & Sizing Tool)
+# Quick Start Guide: kost (Kubernetes Optimization & Sizing Tool)
 
 **Date**: 2026-01-14
 **Updated**: 2026-01-15
-**Feature**: kost (Kubernetes Optimization & Sizing Tool) MVPコア機能
+**Feature**: kost (Kubernetes Optimization & Sizing Tool) MVP Core Features
 **Phase**: Phase 1 - Quickstart Guide
-**Status**: ✅ 実装完了（P1-P2機能）
+**Status**: ✅ Implementation Complete (P1-P2 features)
 
-## 概要
+## Overview
 
-このガイドでは、kost (Kubernetes Optimization & Sizing Tool) のインストールから最初のレポート生成までを10分以内に完了する手順を説明します。
+This guide explains how to go from installation to generating your first report with kost (Kubernetes Optimization & Sizing Tool) in under 10 minutes.
 
-**実装済み機能**:
-- ✅ Deploymentリソース最適化（CPU/Memory requests推奨値）
-- ✅ 適用可能なYAMLパッチ生成（Strategic Merge Patch形式）
-- ✅ Markdownレポート、JSONサマリー生成
-- ✅ labelSelectorとnamespace除外フィルタ
-- ✅ 包括的な入力検証とセキュリティ機能
+**Implemented Features**:
+- ✅ Deployment resource optimization (CPU/Memory requests recommendations)
+- ✅ Applicable YAML patch generation (Strategic Merge Patch format)
+- ✅ Markdown reports and JSON summary generation
+- ✅ labelSelector and namespace exclusion filters
+- ✅ Comprehensive input validation and security features
 
-## 前提条件
+## Prerequisites
 
-以下の環境が整っていることを確認してください：
+Ensure the following environment is ready:
 
-- **Go 1.25.5以上**: セキュリティ脆弱性対策のため（ビルドする場合）
-- **Kubernetes クラスタ**: 稼働中のK8sクラスタへのアクセス権限
-- **kubectl**: `kubectl` コマンドが使用可能で、対象クラスタに接続できること
-- **Prometheus**: クラスタ内にPrometheusが導入済みで、以下のメトリクスが取得可能
+- **Go 1.25.5 or later**: For security vulnerability mitigation (if building from source)
+- **Kubernetes cluster**: Access permissions to a running K8s cluster
+- **kubectl**: `kubectl` command available and able to connect to the target cluster
+- **Prometheus**: Prometheus deployed in the cluster with the following metrics available:
   - `container_cpu_usage_seconds_total`
   - `container_memory_working_set_bytes`
-- **RBAC権限**: Deployment/Podの読み取り権限（read-only）
-- **メトリクス保持期間**: Prometheusが最低5分間のメトリクスを保持していること（本番環境では7日間推奨）
+- **RBAC permissions**: Read-only permissions for Deployment/Pods
+- **Metrics retention**: Prometheus retains at least 5 minutes of metrics (7 days recommended for production)
 
-**セキュリティ要件**:
-- API認証情報は環境変数で管理（設定ファイルに含めない）
-- read-only権限のServiceAccountを使用
+**Security Requirements**:
+- API credentials managed via environment variables (not included in config files)
+- Use read-only ServiceAccount
 
-## Step 1: インストール
+## Step 1: Installation
 
-### バイナリダウンロード（推奨）
+### Binary Download (Recommended)
 
 ```bash
-# 最新リリースをダウンロード
+# Download latest release
 curl -LO https://github.com/lot-koichi/kost/releases/latest/download/kost-linux-amd64
 
-# 実行権限を付与
+# Grant execute permission
 chmod +x kost-linux-amd64
 
-# /usr/local/binに配置
+# Move to /usr/local/bin
 sudo mv kost-linux-amd64 /usr/local/bin/kost
 
-# インストール確認
+# Verify installation
 kost version
 ```
 
-### Go環境からのビルド
+### Build from Go Source
 
 ```bash
-# Go version確認（1.25.5以上必要）
+# Check Go version (1.25.5+ required)
 go version
 
-# リポジトリをクローン
+# Clone repository
 git clone https://github.com/lot-koichi/kost.git
 cd kost
 
-# 依存関係のインストール
+# Install dependencies
 go mod download
 
-# ビルド
+# Build
 go build -o bin/kost ./cmd/kost
 
-# または Makefileを使用
+# Or use Makefile
 make build
 
-# バイナリを確認
+# Verify binary
 ./bin/kost version
 ```
 
-### コンテナイメージ
+### Container Image
 
 ```bash
-# Dockerで実行
+# Run with Docker
 docker run --rm -v ~/.kube:/root/.kube \
   lot-koichi/kost:latest version
 ```
 
-## Step 2: RBAC権限の設定
+## Step 2: RBAC Permission Setup
 
-対象クラスタに以下のRBACリソースを適用します：
+Apply the following RBAC resources to your target cluster:
 
 ```yaml
 # rbac.yaml
@@ -126,20 +126,20 @@ subjects:
   namespace: default
 ```
 
-適用：
+Apply:
 
 ```bash
 kubectl apply -f examples/rbac.yaml
 ```
 
-## Step 3: 設定ファイルの作成
+## Step 3: Create Configuration File
 
-`config.yaml` を作成します：
+Create `config.yaml`:
 
 ```yaml
 # config.yaml
 kube:
-  context: ""  # 空文字列でデフォルトコンテキストを使用
+  context: ""  # Empty string uses default context
 
 prometheus:
   url: "http://prometheus-operated.monitoring:9090"
@@ -167,37 +167,37 @@ output:
     - patch
 
 llm:
-  enabled: false  # 初回はfalseで実行
+  enabled: false  # Set to false for initial run
   provider: "openai"
   model: "gpt-4"
   maxTokens: 1200
   temperature: 0.2
 ```
 
-## Step 4: 最初のスキャン実行
+## Step 4: Run Initial Scan
 
-対象Namespaceを指定してスキャンを実行します：
+Run scan by specifying the target namespace:
 
 ```bash
-# 本番環境をスキャン
+# Scan production environment
 kost scan --namespace prod --config config.yaml
 
-# 出力例:
+# Output example:
 # Scanning namespace: prod
 # Found 15 Deployments
 # Found 5 HPAs
 # Scan completed in 2.3s
 ```
 
-## Step 5: 推奨値の生成
+## Step 5: Generate Recommendations
 
-スキャン結果を基に推奨値を生成します：
+Generate recommendations based on scan results:
 
 ```bash
-# 推奨値を生成
+# Generate recommendations
 kost suggest --namespace prod --config config.yaml
 
-# 出力例:
+# Output example:
 # Analyzing 15 Deployments...
 # Querying Prometheus for CPU/Memory metrics (window: 7d)...
 # Calculating recommendations...
@@ -207,15 +207,15 @@ kost suggest --namespace prod --config config.yaml
 # Suggestion completed in 12.5s
 ```
 
-## Step 6: レポート生成
+## Step 6: Generate Report
 
-推奨値を含むレポートを生成します：
+Generate report including recommendations:
 
 ```bash
-# レポートを生成
+# Generate report
 kost report --namespace prod --config config.yaml
 
-# 出力例:
+# Output example:
 # Generating report...
 # Writing report to: ./out/report.md
 # Writing summary to: ./out/summary.json
@@ -223,201 +223,201 @@ kost report --namespace prod --config config.yaml
 # Report generated successfully!
 ```
 
-## Step 7: レポートの確認
+## Step 7: Review Report
 
-生成されたレポートを確認します：
+Review generated reports:
 
 ```bash
-# Markdownレポート
+# Markdown report
 cat ./out/report.md
 
-# JSONサマリ
+# JSON summary
 cat ./out/summary.json | jq '.'
 
-# パッチファイル一覧
+# List patch files
 ls -la ./out/patches/prod/
-# 出力例:
+# Output example:
 # api-deployment.yaml
 # api-deployment-hpa.yaml
 # worker-deployment.yaml
 ```
 
-## Step 8: パッチの適用（オプション）
+## Step 8: Apply Patches (Optional)
 
-推奨値を確認し、問題なければパッチを適用します：
+Review recommendations and apply patches if acceptable:
 
 ```bash
-# パッチ内容を確認
+# Review patch contents
 cat ./out/patches/prod/api-deployment.yaml
 
-# dry-runで確認
+# Verify with dry-run
 kubectl apply -f ./out/patches/prod/api-deployment.yaml --dry-run=client
 
-# 実際に適用
+# Actually apply
 kubectl apply -f ./out/patches/prod/api-deployment.yaml
 
-# HPA推奨値も適用
+# Also apply HPA recommendations
 kubectl apply -f ./out/patches/prod/api-deployment-hpa.yaml
 ```
 
-## LLMオプション（オプション）
+## LLM Option (Optional)
 
-LLMによる説明生成を有効化する場合：
+To enable LLM-powered explanation generation:
 
-### OpenAI使用時
+### Using OpenAI
 
 ```bash
-# APIキーを環境変数に設定
+# Set API key as environment variable
 export OPENAI_API_KEY="sk-..."
 
-# config.yamlでLLMを有効化
+# Enable LLM in config.yaml
 # llm.enabled: true
 # llm.provider: "openai"
 
-# レポート生成
+# Generate report
 kost report --namespace prod --config config.yaml --llm on
 ```
 
-### Claude使用時
+### Using Claude
 
 ```bash
-# APIキーを環境変数に設定
+# Set API key as environment variable
 export ANTHROPIC_API_KEY="sk-ant-..."
 
-# config.yamlでLLMを有効化
+# Enable LLM in config.yaml
 # llm.enabled: true
 # llm.provider: "claude"
 # llm.model: "claude-3-5-sonnet-20241022"
 
-# レポート生成
+# Generate report
 kost report --namespace prod --config config.yaml --llm on
 ```
 
-## セキュリティのベストプラクティス
+## Security Best Practices
 
-kostを安全に利用するための推奨事項：
+Recommendations for using kost safely:
 
-### API認証情報の保護
+### Protecting API Credentials
 
-- **環境変数で管理**: API認証情報は必ず環境変数で設定してください
+- **Manage with environment variables**: Always set API credentials via environment variables
   ```bash
-  # 正しい方法
+  # Correct method
   export OPENAI_API_KEY="sk-..."
 
-  # 間違った方法（config.yamlに直接記載しない）
-  # llm.apiKey: "sk-..." ← これは禁止
+  # Incorrect method (do not write directly in config.yaml)
+  # llm.apiKey: "sk-..." ← This is prohibited
   ```
 
-- **設定ファイルから除外**: `.gitignore` に環境変数ファイル（`.env`）を追加してください
+- **Exclude from config files**: Add environment variable files (`.env`) to `.gitignore`
   ```bash
   echo ".env" >> .gitignore
   ```
 
-- **kubeconfigの保護**: クラスタアクセス情報を含む `~/.kube/config` を適切に保護してください
+- **Protect kubeconfig**: Properly protect `~/.kube/config` containing cluster access information
   ```bash
   chmod 600 ~/.kube/config
   ```
 
-### RBAC権限の検証
+### Verify RBAC Permissions
 
-kostが必要とする最小権限が付与されているか確認してください：
+Verify that kost has the minimum required permissions:
 
 ```bash
-# ServiceAccountの権限確認
+# Verify ServiceAccount permissions
 kubectl auth can-i list deployments --as=system:serviceaccount:default:finops-advisor
 kubectl auth can-i list pods --as=system:serviceaccount:default:finops-advisor
 kubectl auth can-i list horizontalpodautoscalers --as=system:serviceaccount:default:finops-advisor
 
-# 全て "yes" が返ることを確認
+# Verify all return "yes"
 ```
 
-### 入力バリデーション
+### Input Validation
 
-kostは自動的に入力を検証しますが、以下の点に注意してください：
+kost automatically validates inputs, but note the following:
 
-- **Namespace名**: Kubernetes命名規則に準拠した名前を使用してください（小文字、数字、ハイフン、最大63文字）
+- **Namespace names**: Use names compliant with Kubernetes naming conventions (lowercase, digits, hyphens, max 63 characters)
   ```bash
-  # 正しい例
+  # Correct example
   kost scan --namespace prod-app-v1
 
-  # 間違った例
-  kost scan --namespace "PROD_APP"  # 大文字とアンダースコアは不可
+  # Incorrect example
+  kost scan --namespace "PROD_APP"  # Uppercase and underscores not allowed
   ```
 
-- **出力ディレクトリ**: パストラバーサル攻撃を防ぐため、相対パスまたは安全な絶対パスを使用してください
+- **Output directory**: Use relative paths or safe absolute paths to prevent path traversal attacks
   ```bash
-  # 正しい例
+  # Correct examples
   output.dir: "./out"
   output.dir: "/tmp/kost-reports"
 
-  # 間違った例（拒否されます）
+  # Incorrect examples (will be rejected)
   output.dir: "../../etc/passwd"
   output.dir: "/etc/sensitive"
   ```
 
-### TLS証明書検証
+### TLS Certificate Verification
 
-Prometheus接続時のTLS証明書検証はデフォルトで有効です：
+TLS certificate verification for Prometheus connections is enabled by default:
 
 ```yaml
-# 本番環境では証明書検証を有効化（デフォルト）
+# Enable certificate verification in production (default)
 prometheus:
   url: "https://prometheus.example.com"
-  tlsVerify: true  # デフォルト値
+  tlsVerify: true  # Default value
 
-# 開発環境で自己署名証明書を使用する場合のみ無効化
+# Disable only for development with self-signed certificates
 prometheus:
   url: "https://prometheus-dev.local"
-  tlsVerify: false  # 本番環境では非推奨
+  tlsVerify: false  # Not recommended for production
 ```
 
-## トラブルシューティング
+## Troubleshooting
 
-### Prometheusに接続できない
+### Cannot Connect to Prometheus
 
 ```bash
-# Prometheusエンドポイントを確認
+# Verify Prometheus endpoint
 kubectl get svc -n monitoring prometheus-operated
 
-# ポートフォワードで接続確認
+# Verify connection with port-forward
 kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090
 
-# ブラウザで http://localhost:9090 にアクセスして確認
+# Access http://localhost:9090 in browser to verify
 ```
 
-### 必要なメトリクスが取得できない
+### Required Metrics Not Available
 
 ```bash
-# Prometheusでメトリクスの存在確認
+# Verify metrics exist in Prometheus
 curl -s 'http://prometheus:9090/api/v1/query?query=container_cpu_usage_seconds_total' | jq '.'
 
-# kube-state-metricsの確認
+# Verify kube-state-metrics
 kubectl get pods -n monitoring | grep kube-state-metrics
 ```
 
-### RBAC権限エラー
+### RBAC Permission Error
 
 ```bash
-# 現在の権限を確認
+# Verify current permissions
 kubectl auth can-i list deployments --as=system:serviceaccount:default:finops-advisor
 
-# Roleの確認
+# Describe Role
 kubectl describe clusterrole finops-advisor-reader
 ```
 
-## 次のステップ
+## Next Steps
 
-- **自動化**: GitHub Actions等のCIで定期実行し、レポートをArtifactとして保存
-- **複数Namespace**: `--namespace` を複数回指定して一括分析
-- **GitOps統合**: 生成されたパッチをPRとして自動作成（将来機能）
+- **Automation**: Run periodically in CI like GitHub Actions and save reports as artifacts
+- **Multiple Namespaces**: Specify `--namespace` multiple times for batch analysis
+- **GitOps Integration**: Automatically create PRs with generated patches (future feature)
 
-## まとめ
+## Summary
 
-以上で、kost (Kubernetes Optimization & Sizing Tool) の基本的な使い方を習得しました。このツールは：
+You have now learned the basics of using kost (Kubernetes Optimization & Sizing Tool). This tool:
 
-- ✅ 10分以内にインストールから最初のレポート生成まで完了
-- ✅ Deployment と HPA の両方を最適化
-- ✅ 適用可能なYAMLパッチを自動生成
-- ✅ LLMによる自然言語説明（オプション）
+- ✅ Completes installation to first report in under 10 minutes
+- ✅ Optimizes both Deployment and HPA
+- ✅ Automatically generates applicable YAML patches
+- ✅ Natural language explanations with LLM (optional)
 
-詳細なドキュメントは [README.md](../../../README.md) を参照してください。
+For detailed documentation, see [README.md](../../../README.md).

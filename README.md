@@ -4,61 +4,61 @@
 [![Go Version](https://img.shields.io/badge/Go-1.25.5%2B-00ADD8?logo=go)](https://go.dev/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/lot-koichi/kost/pulls)
 
-Kubernetes Deploymentのリソース設定（requests/limits）およびHPA設定（minReplicas/maxReplicas）を最適化するCLIツールです。
+A CLI tool to optimize Kubernetes Deployment resource configurations (requests/limits) and HPA settings (minReplicas/maxReplicas).
 
-## 概要
+## Overview
 
-kostは、Prometheusメトリクスから過去の実績データを取得し、統計分析（P95/P99等）とルールベースの判定により、具体的な推奨値、適用可能なYAMLパッチ、削減率を記載したレポートを生成します。
+kost retrieves historical performance data from Prometheus metrics, performs statistical analysis (P95/P99, etc.) and rule-based evaluation, then generates reports containing specific recommendations, applicable YAML patches, and reduction rates.
 
-## 主な機能
+## Key Features
 
-- ✅ Deployment リソース最適化の分析と推奨値提示
-- ✅ 適用可能なYAMLパッチの生成
-- ✅ HPA設定の最適化推奨
-- ✅ 複数LLMプロバイダ対応（OpenAI、Claude）
-- ✅ 生成AIによる説明と優先順位付け
+- ✅ Analyze and recommend Deployment resource optimizations
+- ✅ Generate applicable YAML patches
+- ✅ Recommend HPA configuration optimizations
+- ✅ Support multiple LLM providers (OpenAI, Claude)
+- ✅ AI-powered explanations and prioritization
 
-## クイックスタート
+## Quick Start
 
-### インストール
+### Installation
 
 ```bash
-# バイナリダウンロード
+# Download binary
 curl -LO https://github.com/lot-koichi/kost/releases/latest/download/kost-linux-amd64
 chmod +x kost-linux-amd64
 sudo mv kost-linux-amd64 /usr/local/bin/kost
 
-# Go環境からビルド
+# Build from Go source
 git clone https://github.com/lot-koichi/kost.git
 cd kost
 make build
 ```
 
-### 使い方
+### Usage
 
 ```bash
-# 設定ファイルの作成
+# Create configuration file
 cp examples/config.yaml config.yaml
 
-# Deploymentをスキャン
+# Scan Deployments
 kost scan --namespace prod --config config.yaml
 
-# 推奨値を生成
+# Generate recommendations
 kost suggest --namespace prod --config config.yaml
 
-# レポートを生成
+# Generate report
 kost report --namespace prod --config config.yaml
 ```
 
-詳細は[quickstart.md](./specs/001-mvp-core/quickstart.md)を参照してください。
+For details, see [quickstart.md](./specs/001-mvp-core/quickstart.md).
 
-## Local環境での検証
+## Local Environment Testing
 
-minikubeまたはKindを使ってローカル環境でkostを検証する手順です。
+Instructions for testing kost in a local environment using minikube or Kind.
 
-### 方法1: minikubeを使用（推奨）
+### Method 1: Using minikube (Recommended)
 
-#### 1. minikubeのインストール
+#### 1. Install minikube
 
 **macOS:**
 ```bash
@@ -71,26 +71,26 @@ curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-
 sudo install minikube-linux-amd64 /usr/local/bin/minikube
 ```
 
-#### 2. minikubeクラスタの起動
+#### 2. Start minikube cluster
 
 ```bash
-# クラスタを起動（メトリクス収集を有効化）
+# Start cluster (with metrics collection enabled)
 minikube start --cpus=4 --memory=8192 --addons=metrics-server
 
-# kubectlがminikubeを向いていることを確認
+# Verify kubectl is pointing to minikube
 kubectl config current-context
-# 出力: minikube
+# Output: minikube
 ```
 
-#### 3. Prometheusのインストール
+#### 3. Install Prometheus
 
 ```bash
-# Helmのインストール（未インストールの場合）
+# Install Helm (if not already installed)
 brew install helm  # macOS
-# または
+# or
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash  # Linux
 
-# PrometheusをインストールKube-state-metricsと共に）
+# Install Prometheus (with kube-state-metrics)
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
 
@@ -99,14 +99,14 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
   --create-namespace \
   --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false
 
-# Prometheusの起動を待つ（2-3分）
+# Wait for Prometheus to start (2-3 minutes)
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
 ```
 
-#### 4. サンプルアプリケーションのデプロイ
+#### 4. Deploy sample application
 
 ```bash
-# サンプルDeploymentを作成
+# Create sample Deployment
 cat <<EOF | kubectl apply -f -
 apiVersion: apps/v1
 kind: Deployment
@@ -128,8 +128,8 @@ spec:
         image: nginx:latest
         resources:
           requests:
-            cpu: "500m"      # 過剰なリクエスト（検証用）
-            memory: "512Mi"  # 過剰なリクエスト（検証用）
+            cpu: "500m"      # Excessive request (for testing)
+            memory: "512Mi"  # Excessive request (for testing)
           limits:
             cpu: "1000m"
             memory: "1Gi"
@@ -155,24 +155,24 @@ spec:
         averageUtilization: 80
 EOF
 
-# Podが起動するまで待つ
+# Wait for Pods to be ready
 kubectl wait --for=condition=ready pod -l app=nginx --timeout=60s
 
-# 負荷をかける（メトリクスを生成）
+# Generate load (to produce metrics)
 kubectl run -i --tty load-generator --rm --image=busybox --restart=Never -- /bin/sh -c "while sleep 0.01; do wget -q -O- http://nginx-demo; done" &
 
-# 5分間待って、メトリクスを蓄積
+# Wait 5 minutes for metrics to accumulate
 echo "Waiting for metrics to accumulate (5 minutes)..."
 sleep 300
 ```
 
-#### 5. kostの実行
+#### 5. Run kost
 
 ```bash
-# Prometheusにポートフォワード
+# Port-forward to Prometheus
 kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090 &
 
-# kostのconfig.yamlを準備
+# Prepare kost config.yaml
 cat <<EOF > config.yaml
 kube:
   context: "minikube"
@@ -182,7 +182,7 @@ prometheus:
   timeoutSeconds: 30
 
 analysis:
-  window: "5m"  # ローカル検証では短い期間を使用
+  window: "5m"  # Use short period for local testing
   cpuPercentile: 0.95
   memPercentile: 0.95
   safetyFactor: 1.2
@@ -206,36 +206,36 @@ llm:
   enabled: false
 EOF
 
-# kostでスキャン
+# Scan with kost
 ./bin/kost scan -n default --config config.yaml
 
-# 推奨値を生成
+# Generate recommendations
 ./bin/kost suggest -n default --config config.yaml
 
-# レポートを生成
+# Generate report
 ./bin/kost report -n default --config config.yaml
 
-# レポートを確認
+# View report
 cat ./out/report.md
 ```
 
-#### 6. クリーンアップ
+#### 6. Cleanup
 
 ```bash
-# ポートフォワードを停止
+# Stop port-forward
 pkill -f "port-forward"
 
-# サンプルアプリを削除
+# Delete sample application
 kubectl delete deployment nginx-demo
 kubectl delete hpa nginx-demo-hpa
 
-# minikubeクラスタを削除（必要に応じて）
+# Delete minikube cluster (if needed)
 minikube delete
 ```
 
-### 方法2: Kindを使用
+### Method 2: Using Kind
 
-#### 1. Kindのインストール
+#### 1. Install Kind
 
 **macOS:**
 ```bash
@@ -249,10 +249,10 @@ chmod +x ./kind
 sudo mv ./kind /usr/local/bin/kind
 ```
 
-#### 2. Kindクラスタの作成
+#### 2. Create Kind cluster
 
 ```bash
-# クラスタ設定ファイルを作成
+# Create cluster configuration file
 cat <<EOF > kind-config.yaml
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -262,18 +262,18 @@ nodes:
 - role: worker
 EOF
 
-# クラスタを作成
+# Create cluster
 kind create cluster --name kost-test --config kind-config.yaml
 
-# kubectlがkindを向いていることを確認
+# Verify kubectl is pointing to kind
 kubectl config current-context
-# 出力: kind-kost-test
+# Output: kind-kost-test
 ```
 
-#### 3. Prometheusのインストール
+#### 3. Install Prometheus
 
 ```bash
-# minikubeの場合と同じ手順
+# Same procedure as minikube
 helm install prometheus prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   --create-namespace \
@@ -282,93 +282,58 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
 ```
 
-#### 4-6. サンプルアプリのデプロイ、kost実行、クリーンアップ
+#### 4-6. Deploy sample app, run kost, cleanup
 
-minikubeの場合と同じ手順で実行します。
+Follow the same steps as for minikube.
 
 ```bash
-# クラスタを削除（必要に応じて）
+# Delete cluster (if needed)
 kind delete cluster --name kost-test
 ```
 
-## 前提条件
+## Prerequisites
 
-- **Go 1.25.5以上**（セキュリティ脆弱性対策のため）
-- Kubernetes クラスタへのアクセス権限
-- Prometheusが導入済み（必要なメトリクスが取得可能）
-- RBAC権限（Deployment/Pod/HPAの読み取り専用）
+- **Go 1.25.5 or later** (for security vulnerability mitigation)
+- Access permissions to Kubernetes cluster
+- Prometheus already deployed (with required metrics available)
+- RBAC permissions (read-only for Deployment/Pod/HPA)
 
-**重要**: Go 1.25.3以前のバージョンには既知のセキュリティ脆弱性（GO-2025-4175, GO-2025-4155）が存在します。Go 1.25.5以上へのアップグレードを強く推奨します。
+**Important**: Go 1.25.3 and earlier versions have known security vulnerabilities (GO-2025-4175, GO-2025-4155). Upgrading to Go 1.25.5 or later is strongly recommended.
 
-## セキュリティ
+## Security
 
-kostはセキュリティを最優先に設計されています：
+kost is designed with security as the top priority:
 
-### API認証情報の管理
+### API Credential Management
 
-- **環境変数のみ**: 全てのAPI認証情報は環境変数で管理します
-  - Kubernetes: kubeconfigファイルまたはin-cluster認証
-  - LLM: `OPENAI_API_KEY` または `ANTHROPIC_API_KEY` 環境変数
-- **設定ファイルには含めない**: API認証情報を `config.yaml` に記載しないでください
-- **ログに出力しない**: エラーメッセージやレポートに認証情報は含まれません
+- **Environment variables only**: All API credentials are managed via environment variables
+  - Kubernetes: kubeconfig file or in-cluster authentication
+  - LLM: `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` environment variables
+- **Not in config files**: Do not include API credentials in `config.yaml`
+- **Not logged**: Error messages and reports do not contain credentials
 
-### RBAC権限（最小権限の原則）
+### RBAC Permissions (Principle of Least Privilege)
 
-kostは以下の読み取り専用権限のみを必要とします：
-- Deployments（apps/deployments）: `get`, `list`
-- Pods（core/pods）: `get`, `list`
-- HPAs（autoscaling/horizontalpodautoscalers）: `get`, `list`
-- Namespaces（core/namespaces）: `get`, `list`
+kost requires only the following read-only permissions:
+- Deployments (apps/deployments): `get`, `list`
+- Pods (core/pods): `get`, `list`
+- HPAs (autoscaling/horizontalpodautoscalers): `get`, `list`
+- Namespaces (core/namespaces): `get`, `list`
 
-詳細は [examples/rbac.yaml](./examples/rbac.yaml) を参照してください。
+See [examples/rbac.yaml](./examples/rbac.yaml) for details.
 
-### 入力検証
+### TLS Certificate Verification
 
-kostは以下の入力を検証し、セキュリティ攻撃を防止します：
-- **Namespace名**: Kubernetes命名規則に準拠しているか検証
-- **Label selector**: インジェクション攻撃を防ぐ文字列検証
-- **Prometheus URL**: 有効なHTTP/HTTPSスキームの検証
-- **出力パス**: パストラバーサル攻撃の防止
-- **PromQLクエリ**: インジェクション攻撃の防止
+- TLS certificate verification is enabled by default
+- Can be disabled in configuration, but not recommended for production
 
-### 脆弱性管理
+## Documentation
 
-kostのCI/CDパイプラインには以下のセキュリティスキャンが組み込まれています：
-- **gosec**: Go言語の静的セキュリティ解析 ✅ クリーン（0件）
-- **govulncheck**: Go依存関係の既知脆弱性スキャン ⚠️ Go標準ライブラリの既知脆弱性あり（対策方法記載）
-- **Trivy**: コンテナイメージおよびファイルシステムの脆弱性スキャン
+- [Quick Start Guide](./specs/001-mvp-core/quickstart.md)
+- [Feature Specification](./specs/001-mvp-core/spec.md)
+- [Data Model](./specs/001-mvp-core/data-model.md)
+- [Technical Research](./specs/001-mvp-core/research.md)
 
-詳細なセキュリティテスト結果は [TEST_RESULTS.md](./TEST_RESULTS.md) を参照してください。
-
-**セキュリティスキャンの実行方法**:
-```bash
-# gosec
-go install github.com/securego/gosec/v2/cmd/gosec@latest
-gosec ./...
-
-# govulncheck
-go install golang.org/x/vuln/cmd/govulncheck@latest
-govulncheck ./...
-```
-
-### TLS証明書検証
-
-- デフォルトでTLS証明書検証が有効です
-- 設定で無効化可能ですが、本番環境では推奨しません
-
-## ドキュメント
-
-### 機能仕様
-- [クイックスタートガイド](./specs/001-mvp-core/quickstart.md)
-- [機能仕様書](./specs/001-mvp-core/spec.md)
-- [データモデル](./specs/001-mvp-core/data-model.md)
-- [技術調査](./specs/001-mvp-core/research.md)
-
-### テストとセキュリティ
-- [テスト結果レポート](./TEST_RESULTS.md) - セキュリティスキャン結果、E2Eテスト結果、既知の問題
-- [セキュリティテスト計画](./SECURITY_TEST_PLAN.md) - セキュリティチェックリスト、ペネトレーションテスト
-- [E2Eテスト計画](./E2E_TEST_PLAN.md) - 包括的なテストシナリオ
-
-## ライセンス
+## License
 
 Apache License 2.0

@@ -1,104 +1,102 @@
-# Kubernetes × FinOps × 生成AI OSS：開発プロセス & MVP設計（詳細版）
+# Kubernetes × FinOps × Generative AI OSS: Development Process & MVP Design (Detailed Version)
 
-本ドキュメントは、**Kubernetes クラスタのリソース割当（requests/limits）最適化**を主題に、  
-**可視化（OpenCost/Kubecost等）ではなく「改善提案（Actionable suggestions）」にフォーカス**した OSS を開発するための、実装に落とせるレベルの計画書です。
+This document serves as an implementation-ready plan for developing an OSS focused on **optimizing Kubernetes cluster resource allocation (requests/limits)**, with emphasis on **actionable suggestions** rather than visualization (like OpenCost/Kubecost).
 
-- 対象プロダクト（仮名）：`k8s-finops-advisor`
-- 形式：CLI（将来 GitHub Action / GitOps PR 連携）
-- コア価値：**「なぜ無駄か」→「どう直すか（具体パッチ）」→「効果見込み」**を一気通貫で出す
-
----
-
-## 1. 目的・背景
-
-### 1.1 目的（Goal）
-Kubernetes の運用現場で頻発する課題の一つは、**リソース requests/limits の過剰設定**です。
-
-- 過剰な requests は、スケジューリング効率の低下（ノードの無駄）につながる
-- 過小な requests は、レイテンシ悪化・OOM・再起動などのリスクになる
-- 「どこを」「どれだけ」直すべきかを判断するには、メトリクス + 文脈理解が必要
-
-本 OSS は、メトリクス（例：Prometheus）とマニフェスト（K8s API）から情報を集め、  
-**具体的な改善提案（推奨値、適用パッチ、説明）**を出力します。
-
-### 1.2 非目的（Non-goals：MVPではやらない）
-MVP のスコープを明確にするため、次は「やらない」と定義します。
-
-- **完全なコスト計算 / コストアトリビューション**（OpenCost/Kubecost の領域）
-- 自動適用（`kubectl apply` の自動実行）  
-  - MVP では **提案・パッチ生成まで**。適用は人間の判断
-- 全最適化領域の網羅（ノード最適化、スポット最適化、SLO最適化など）
-- 複雑なワークロード種別の完全対応（まずは Deployment から）
+- Target product (working name): `k8s-finops-advisor`
+- Format: CLI (future GitHub Action / GitOps PR integration)
+- Core value: **Seamlessly delivers "Why wasteful?" → "How to fix? (concrete patches)" → "Expected impact"**
 
 ---
 
-## 2. 差別化（競合整理）
+## 1. Purpose & Background
+
+### 1.1 Purpose (Goal)
+One of the most common challenges in Kubernetes operations is **excessive resource requests/limits configuration**.
+
+- Excessive requests lead to reduced scheduling efficiency (node waste)
+- Insufficient requests risk latency degradation, OOM, and restarts
+- Determining "what" and "how much" to fix requires metrics + contextual understanding
+
+This OSS collects information from metrics (e.g., Prometheus) and manifests (K8s API), then outputs **concrete improvement proposals (recommended values, applicable patches, explanations)**.
+
+### 1.2 Non-goals (What MVP Won't Do)
+To clarify MVP scope, the following are defined as "won't do":
+
+- **Complete cost calculation / cost attribution** (OpenCost/Kubecost domain)
+- Automatic application (automatic `kubectl apply` execution)
+  - MVP stops at **proposal/patch generation**. Application is human decision
+- Complete coverage of all optimization areas (node optimization, spot optimization, SLO optimization, etc.)
+- Full support for complex workload types (start with Deployment first)
+
+---
+
+## 2. Differentiation (Competitive Landscape)
 
 ### 2.1 OpenCost / Kubecost
-- 強い点：コスト可視化、割当て、レポーティング
-- 弱い点：**「具体的に何をどう変えるか」**の提案生成は中心機能ではない
+- Strengths: Cost visualization, allocation, reporting
+- Weaknesses: **Specific "what to change and how" proposal generation** is not a core feature
 
-### 2.2 生成AIデバッグ系（例：K8sGPT 等）
-- 強い点：トラブルシューティング支援、状態分析
-- 弱い点：FinOps/リソース最適化の**定量推奨**と**適用パッチ**までの一体化は薄い
+### 2.2 Generative AI Debugging Tools (e.g., K8sGPT, etc.)
+- Strengths: Troubleshooting support, state analysis
+- Weaknesses: Integration of FinOps/resource optimization **quantitative recommendations** and **applicable patches** is limited
 
-### 2.3 本 OSS の立ち位置
-> **可視化**ではなく **改善提案**に特化し、  
-> *推奨値（定量） + 根拠（統計） + パッチ（適用可能） + 説明（自然言語）* を提供する。
-
----
-
-## 3. ターゲットユーザーとユースケース
-
-### 3.1 想定ユーザー
-- Kubernetes を運用する SRE / Platform Engineer
-- 開発チームでクラスタコストを管理する担当者（FinOps）
-- GitOps 運用を行うチーム（Argo CD / Flux 等）
-
-### 3.2 主要ユースケース（MVP：一点突破）
-**Namespace 単位で、Deployment の過剰/過小な requests を検出し、推奨値 + パッチ + レポートを出す。**
+### 2.3 Position of This OSS
+> Focused on **improvement proposals** rather than **visualization**,
+> providing *recommended values (quantitative) + rationale (statistical) + patches (applicable) + explanations (natural language)*.
 
 ---
 
-## 4. プロダクト概要（MVP）
+## 3. Target Users & Use Cases
 
-### 4.1 MVP の一言定義
-**「過剰/過小な requests/limits を検出し、推奨値・理由・YAMLパッチを出すCLI」**
+### 3.1 Target Users
+- SRE / Platform Engineers operating Kubernetes
+- Team members managing cluster costs (FinOps)
+- Teams practicing GitOps operations (Argo CD / Flux, etc.)
 
-### 4.2 入力（Inputs）
-- kubeconfig / in-cluster config（K8s API）
-- Prometheus endpoint（または in-cluster）
-- 対象指定（namespace / label selector / deployment名）
-- 集計期間（例：7d）と統計（P50/P95/P99）
-- 任意：除外ルール（システム系 namespace、ジョブ系）
+### 3.2 Primary Use Case (MVP: Focused Approach)
+**Detect excessive/insufficient requests for Deployments in a namespace, and output recommended values + patches + report.**
 
-### 4.3 出力（Outputs）
-- `report.md`：人間向けのサマリ（上位改善案、理由、注意点）
-- `patches/`：適用候補パッチ（Deployment 単位）
+---
+
+## 4. Product Overview (MVP)
+
+### 4.1 MVP One-Liner
+**"CLI that detects excessive/insufficient requests/limits and outputs recommended values, rationale, and YAML patches"**
+
+### 4.2 Inputs
+- kubeconfig / in-cluster config (K8s API)
+- Prometheus endpoint (or in-cluster)
+- Target specification (namespace / label selector / deployment name)
+- Aggregation period (e.g., 7d) and statistics (P50/P95/P99)
+- Optional: Exclusion rules (system namespaces, job-type workloads)
+
+### 4.3 Outputs
+- `report.md`: Human-readable summary (top improvement proposals, rationale, notes)
+- `patches/`: Candidate patches (per Deployment)
   - `patches/<namespace>/<deployment>.yaml`
-- `summary.json`：機械可読（将来 GitHub Action / PR 作成用）
+- `summary.json`: Machine-readable (future GitHub Action / PR creation)
 
 ---
 
-## 5. 具体的なMVP仕様（コマンド、設定、アルゴリズム）
+## 5. Specific MVP Specifications (Commands, Configuration, Algorithms)
 
-### 5.1 CLI コマンド設計（最小3コマンド）
-MVP では 3コマンドを提供し、内部的には同じ実行パイプラインを分割します。
+### 5.1 CLI Command Design (Minimum 3 Commands)
+MVP provides 3 commands, internally splitting the same execution pipeline:
 
-1) `scan`：対象収集（K8sからマニフェスト情報）
-2) `suggest`：推奨値生成（統計・ルール）
-3) `report`：レポート生成（Markdown / JSON、任意でAI要約）
+1) `scan`: Target collection (manifest info from K8s)
+2) `suggest`: Recommendation generation (statistics & rules)
+3) `report`: Report generation (Markdown / JSON, optional AI summary)
 
-例：
+Example:
 ```bash
 k8s-finops scan --namespace prod
 k8s-finops suggest --namespace prod --window 7d --cpu p95 --mem p95
 k8s-finops report --namespace prod --llm on
 ```
 
-将来的には `run`（scan→suggest→report）を追加してもよいですが、MVP段階ではデバッグしやすい分割が推奨です。
+A `run` command (scan→suggest→report) could be added later, but the MVP phase recommends easy-to-debug separation.
 
-### 5.2 設定ファイル（例：`config.yaml`）
+### 5.2 Configuration File (Example: `config.yaml`)
 ```yaml
 kube:
   context: ""
@@ -126,47 +124,47 @@ llm:
   temperature: 0.2
 ```
 
-> **注**：モデル名は例です。実装では環境変数で上書き可能にすると運用しやすいです。
+> **Note**: Model names are examples. Implementation should allow environment variable overrides for operational flexibility.
 
-### 5.3 取得するメトリクス（Prometheus）
-MVPでは CPU/Memory utilization を中心にします。
+### 5.3 Metrics to Retrieve (Prometheus)
+MVP focuses on CPU/Memory utilization:
 
-- CPU 使用量（例）：`rate(container_cpu_usage_seconds_total[5m])`
-- Memory 使用量（例）：`container_memory_working_set_bytes`
+- CPU usage (example): `rate(container_cpu_usage_seconds_total[5m])`
+- Memory usage (example): `container_memory_working_set_bytes`
 
-**重要**：node-exporter / cAdvisor / kube-state-metrics の導入状況でクエリが変わります。  
-MVPでは「Prometheus から値を取れること」が前提になるため、docs に前提条件を明記します。
+**Important**: Queries vary depending on node-exporter / cAdvisor / kube-state-metrics deployment.
+MVP assumes "values can be retrieved from Prometheus", so docs must clearly state prerequisites.
 
-### 5.4 推奨値算出（AIに任せない：再現性と安全性）
-推奨値は **統計 + ルール** で決定し、AIは説明・優先度付けに限定します。
+### 5.4 Recommendation Calculation (Don't Leave to AI: Reproducibility and Safety)
+Recommendations are determined by **statistics + rules**, with AI limited to explanation/prioritization.
 
-#### 5.4.1 推奨 requests の基本式
+#### 5.4.1 Basic Formula for Recommended Requests
 - `recommended_cpu_request_m = max(Pxx_cpu_m * safetyFactor, minCpuMilli)`
 - `recommended_mem_request_mi = max(Pxx_mem_mi * safetyFactor, minMemMi)`
 
-例（CPU）：
-- P95 = 120m、safetyFactor=1.2 → 推奨 = 144m（丸めて 150m）
+Example (CPU):
+- P95 = 120m, safetyFactor=1.2 → recommended = 144m (rounded to 150m)
 
-#### 5.4.2 判定ルール（例）
-- **Overprovisioned**：`current_request > Pxx * 2.0`
-- **Underprovisioned**：`current_request < Pxx * 1.1`
-- **Risky limit**（任意）：`limit >> request`（例：10倍超）
+#### 5.4.2 Judgment Rules (Example)
+- **Overprovisioned**: `current_request > Pxx * 2.0`
+- **Underprovisioned**: `current_request < Pxx * 1.1`
+- **Risky limit** (optional): `limit >> request` (e.g., exceeds 10x)
 
-#### 5.4.3 期待効果（推定）
-MVPでは「絶対のコスト」ではなく、**削減率**（request削減の割合）を提示します。
+#### 5.4.3 Expected Impact (Estimate)
+MVP presents **reduction rate** (proportion of request reduction) rather than absolute cost:
 
-- `saving_cpu_request_ratio = (current - recommended) / current`（推奨が小さい場合）
-- Memory も同様
+- `saving_cpu_request_ratio = (current - recommended) / current` (when recommendation is lower)
+- Same for memory
 
-> OpenCost と統合すれば金額換算も可能ですが、MVPではまず削減率と根拠を重視します。
+> Integration with OpenCost could enable cost conversion, but MVP prioritizes reduction rate and rationale.
 
-### 5.5 パッチ生成（GitOps向け）
-出力するパッチは最低限、Deployment の `resources.requests/limits` を更新できる形式にします。
+### 5.5 Patch Generation (GitOps-oriented)
+Output patches should minimally update Deployment `resources.requests/limits`:
 
-- 推奨：**Strategic Merge Patch**（人が読みやすい）
-- 代替：JSONPatch（機械的で安全だが読みづらい）
+- Recommended: **Strategic Merge Patch** (human-readable)
+- Alternative: JSONPatch (mechanically safe but harder to read)
 
-例（Strategic Merge Patch）：
+Example (Strategic Merge Patch):
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -186,172 +184,172 @@ spec:
 
 ---
 
-## 6. 生成AIの使い方（MVPで価値が出る限定活用）
+## 6. Using Generative AI (Limited Use for MVP Value)
 
-### 6.1 AIの役割（MVP）
-- 提案の**優先順位付け**（影響大/リスク大から）
-- 人間向けの**説明**（なぜ、どう直す、注意点）
-- リスクの言語化（ピーク時、季節性、バッチ混在など）
+### 6.1 AI Role (MVP)
+- **Prioritization** of proposals (by impact/risk)
+- Human-readable **explanations** (why, how to fix, notes)
+- Verbalizing risks (peak times, seasonality, batch workload mixing, etc.)
 
-### 6.2 AIに渡す入力（構造化が重要）
-LLMには「ログ全文」ではなく、**要点を構造化して渡す**のが安定します。
+### 6.2 Input to AI (Structured Data is Key)
+Passing structured **key points** to the LLM rather than full logs ensures stability:
 
-- 現状 requests/limits
-- P50/P95/P99 utilization（CPU/Memory）
-- 推奨値（計算済み）
-- 過剰/過小判定
-- 過去イベント（OOMKilled、再起動回数）※取れれば
-- 期待削減率（CPU/Memory）
+- Current requests/limits
+- P50/P95/P99 utilization (CPU/Memory)
+- Recommended values (pre-calculated)
+- Over/under-provisioning judgment
+- Past events (OOMKilled, restart count) *if available
+- Expected reduction rate (CPU/Memory)
 
-### 6.3 例：LLMへのプロンプト方針（概要）
-- System：FinOps + K8s SRE の観点で、事実に基づいて提案
-- User：上記構造化データ（JSON）
-- Output：Markdown のレポートセクション（短く、具体的に）
+### 6.3 Example: LLM Prompt Approach (Overview)
+- System: Propose based on facts from FinOps + K8s SRE perspective
+- User: Structured data above (JSON)
+- Output: Markdown report section (concise, concrete)
 
-> 実装では、LLMレスポンスをそのまま貼るのではなく、テンプレートに差し込む形が安全です。
+> In implementation, safely insert LLM response into template rather than pasting raw output.
 
 ---
 
-## 7. 開発プロセス（OSSとして回る手順）
+## 7. Development Process (OSS Sustainable Workflow)
 
-### 7.1 フェーズ0：設計を固定（ブレ防止）
-- README 冒頭に「目的」「非目的」「MVP」を明記
-- 主要な I/O（入力→処理→出力）を図にする（ASCIIでもOK）
-- 競合との差別化を 3行で書ける状態にする
+### 7.1 Phase 0: Solidify Design (Prevent Drift)
+- Clearly state "Purpose", "Non-goals", "MVP" at top of README
+- Diagram main I/O (input→processing→output) (ASCII is fine)
+- Make differentiation from competitors writable in 3 lines
 
-成果物：
-- `README.md` 初版
-- `docs/design.md`（本ドキュメント）
+Deliverables:
+- Initial `README.md`
+- `docs/design.md` (this document)
 - `LICENSE`
 
-### 7.2 フェーズ1：リポジトリの骨格（Contributionしやすさ）
-最低限、次を揃えて外部参加しやすくします。
+### 7.2 Phase 1: Repository Skeleton (Ease of Contribution)
+Minimally prepare the following to facilitate external participation:
 
 - `README.md`
 - `LICENSE`
 - `CONTRIBUTING.md`
 - `.github/ISSUE_TEMPLATE/*`
 - `.github/pull_request_template.md`
-- CI（lint / test / build）
+- CI (lint / test / build)
 
-推奨ディレクトリ例（言語により調整）：
+Recommended directory structure (adjust by language):
 ```
 .
-├── cmd/                    # CLIエントリ（Goの場合）
+├── cmd/                    # CLI entry (for Go)
 ├── internal/
-│   ├── k8s/                # K8s APIアクセス
-│   ├── metrics/            # Prometheusクエリ
-│   ├── engine/             # 推奨値算出
-│   ├── patch/              # パッチ生成
-│   ├── report/             # md/json出力
-│   └── llm/                # LLM I/F（任意）
+│   ├── k8s/                # K8s API access
+│   ├── metrics/            # Prometheus queries
+│   ├── engine/             # Recommendation calculation
+│   ├── patch/              # Patch generation
+│   ├── report/             # md/json output
+│   └── llm/                # LLM I/F (optional)
 ├── docs/
 ├── examples/
-└── out/                    # 出力（gitignore）
+└── out/                    # Output (gitignore)
 ```
 
-### 7.3 フェーズ2：MVPを小さく完成させる（マイルストーン）
-**「小さい完成」**を積み重ねる設計です。
+### 7.3 Phase 2: Complete Small MVP (Milestones)
+Design to accumulate **"small completions"**.
 
-#### Milestone 0：Skeleton
-- CLI雛形（サブコマンド、設定読み込み）
-- ダミーデータで `report.md` を生成
+#### Milestone 0: Skeleton
+- CLI template (subcommands, config loading)
+- Generate `report.md` with dummy data
 
-#### Milestone 1：Data Acquisition
-- K8s API から Deployment/Container の requests/limits 取得
-- 対象は Deployment のみ（まずはこれだけ）
+#### Milestone 1: Data Acquisition
+- Retrieve Deployment/Container requests/limits from K8s API
+- Target only Deployments (for now)
 
-#### Milestone 2：Suggestion Engine（統計・ルール）
-- Prometheus から CPU/Memory utilization を取得
-- P95 等の統計に基づき推奨値算出
-- 判定（over/under）と削減率を計算
+#### Milestone 2: Suggestion Engine (Statistics & Rules)
+- Retrieve CPU/Memory utilization from Prometheus
+- Calculate recommendations based on statistics like P95
+- Calculate judgment (over/under) and reduction rate
 
-#### Milestone 3：Patch / Report 出力
-- `patches/` を生成
-- `report.md` をテンプレートで生成
-- `summary.json` を出力
+#### Milestone 3: Patch / Report Output
+- Generate `patches/`
+- Generate `report.md` from template
+- Output `summary.json`
 
-#### Milestone 4：LLM Narrative（任意でMVPに含める）
-- LLMは説明文生成・注意点に限定
-- 失敗時はフォールバック（ルールベース文）に切替
+#### Milestone 4: LLM Narrative (Optional for MVP)
+- LLM limited to explanation/notes generation
+- Fallback to rule-based text on failure
 
-#### Milestone 5：GitHub Action（MVP+）
-- cronでレポート生成して artifact 出力
-- 将来：PR作成（次フェーズ）
-
----
-
-## 8. 品質・安全性（信頼されるOSSの条件）
-
-### 8.1 安全設計
-- デフォルトは `--dry-run`
-- **自動適用しない**（MVP）
-- 推奨値の根拠（P95、係数、丸め）を必ず出す
-
-### 8.2 テスト方針
-- engine（推奨値計算）はユニットテスト必須
-- Prometheus/K8sレスポンスは fixture で再現性を確保
-- 最低限：GitHub Actions で `lint + test + build`
-
-### 8.3 例外・エラーハンドリング
-- Prometheus から取れない場合：
-  - エラーメッセージに「必要なメトリクス」「確認手順」を提示
-- K8s権限不足：
-  - 必要 RBAC（read-only）を docs に記載
+#### Milestone 5: GitHub Action (MVP+)
+- Generate report on cron and output artifact
+- Future: PR creation (next phase)
 
 ---
 
-## 9. まず作るIssue一覧（初期バックログ例）
+## 8. Quality & Safety (Conditions for Trusted OSS)
+
+### 8.1 Safety Design
+- Default is `--dry-run`
+- **No automatic application** (MVP)
+- Always show rationale for recommendations (P95, coefficient, rounding)
+
+### 8.2 Testing Approach
+- Engine (recommendation calculation) requires unit tests
+- Ensure reproducibility with fixtures for Prometheus/K8s responses
+- Minimum: `lint + test + build` in GitHub Actions
+
+### 8.3 Exception & Error Handling
+- When Prometheus data unavailable:
+  - Error message should present "required metrics" and "verification steps"
+- K8s permission insufficient:
+  - Document required RBAC (read-only) in docs
+
+---
+
+## 9. Initial Issue List (Initial Backlog Example)
 
 ### 9.1 Repo/CI
-- [ ] 初版 README（目的、非目的、Quickstart、デモ）
-- [ ] ライセンス追加
-- [ ] CI（lint/test/build）
-- [ ] Issue/PR テンプレ
+- [ ] Initial README (purpose, non-goals, quickstart, demo)
+- [ ] Add license
+- [ ] CI (lint/test/build)
+- [ ] Issue/PR templates
 
-### 9.2 機能
-- [ ] `scan`：Deployment/Container の resources 取得
-- [ ] `metrics`：Prometheus クエリ実装（CPU/Memory）
-- [ ] `suggest`：推奨値算出（P95 + safety）
-- [ ] `patch`：Strategic Merge Patch 生成
-- [ ] `report`：Markdownテンプレート実装
-- [ ] `summary.json` 生成（将来拡張用）
-- [ ] LLM narrative（オプション、フォールバック付き）
+### 9.2 Features
+- [ ] `scan`: Retrieve Deployment/Container resources
+- [ ] `metrics`: Implement Prometheus queries (CPU/Memory)
+- [ ] `suggest`: Calculate recommendations (P95 + safety)
+- [ ] `patch`: Generate Strategic Merge Patch
+- [ ] `report`: Implement Markdown template
+- [ ] `summary.json` generation (future extension)
+- [ ] LLM narrative (optional, with fallback)
 
 ### 9.3 Docs
-- [ ] 前提条件（Prometheus/kube-state-metrics）
-- [ ] RBAC例（read-only）
-- [ ] FAQ（よくある失敗：メトリクス取れない 等）
+- [ ] Prerequisites (Prometheus/kube-state-metrics)
+- [ ] RBAC example (read-only)
+- [ ] FAQ (common failures: metrics unavailable, etc.)
 
 ---
 
-## 10. 将来ロードマップ（MVP後）
+## 10. Future Roadmap (Post-MVP)
 
-### 10.1 Phase 2（MVPの次）
-- OpenCost 連携で金額換算（節約見積り）
-- GitHub Action（週次レポート）
-- GitOps PR 作成（提案パッチを自動PR化）
+### 10.1 Phase 2 (After MVP)
+- OpenCost integration for cost conversion (savings estimate)
+- GitHub Action (weekly reports)
+- GitOps PR creation (automated PR for proposal patches)
 
-### 10.2 Phase 3（高度化）
-- HPA/VPA の提案
-- ワークロード種別拡張（StatefulSet/Job）
-- 変更の段階適用（safe rollout plan）
-- SLO/エラーレートと連携（コストだけでなく信頼性も加味）
+### 10.2 Phase 3 (Advanced)
+- HPA/VPA proposals
+- Workload type expansion (StatefulSet/Job)
+- Staged change application (safe rollout plan)
+- Integration with SLO/error rates (consider reliability, not just cost)
 
 ---
 
-## 付録A：レポート（report.md）テンプレ案
+## Appendix A: Report (report.md) Template Proposal
 
 ```md
 # k8s-finops-advisor report
 
-対象: namespace=prod / window=7d / percentile=P95 / safety=1.2
+Target: namespace=prod / window=7d / percentile=P95 / safety=1.2
 
 ## Top findings
 1. Deployment `api` container `app`
-   - 現状 request(cpu)=500m / P95=120m → 推奨=150m（-70%）
-   - 理由: 平常時の使用率が低く、P95でも十分余裕あり
-   - 注意: 月次バッチ等のピークがある場合は段階的に適用
+   - Current request(cpu)=500m / P95=120m → recommended=150m (-70%)
+   - Rationale: Low utilization during normal operation, sufficient margin even at P95
+   - Note: If monthly batch or other peaks exist, apply in stages
 
 ## Suggested patches
 - patches/prod/api.yaml
@@ -363,15 +361,15 @@ LLMには「ログ全文」ではなく、**要点を構造化して渡す**の�
 
 ---
 
-## 付録B：MVPの「完了条件（Definition of Done）」
+## Appendix B: MVP "Definition of Done"
 
-- 10分以内に導入できる（README Quickstart が通る）
-- `scan → suggest → report` で `report.md` が生成される
-- 少なくとも 1 Deployment で「根拠付き推奨」が出る
-- `patches/` が生成され、適用可能な形式になっている
-- CI が green（lint/test/build）
-- `--dry-run` がデフォルトで安全
+- Deployable within 10 minutes (README Quickstart works)
+- `scan → suggest → report` generates `report.md`
+- At least 1 Deployment shows "recommendation with rationale"
+- `patches/` generated in applicable format
+- CI green (lint/test/build)
+- `--dry-run` is default for safety
 
 ---
 
-以上。
+End.
