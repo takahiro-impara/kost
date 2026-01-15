@@ -1,25 +1,38 @@
 # クイックスタートガイド: kost (Kubernetes Optimization & Sizing Tool)
 
 **Date**: 2026-01-14
+**Updated**: 2026-01-15
 **Feature**: kost (Kubernetes Optimization & Sizing Tool) MVPコア機能
 **Phase**: Phase 1 - Quickstart Guide
+**Status**: ✅ 実装完了（P1-P2機能）
 
 ## 概要
 
 このガイドでは、kost (Kubernetes Optimization & Sizing Tool) のインストールから最初のレポート生成までを10分以内に完了する手順を説明します。
 
+**実装済み機能**:
+- ✅ Deploymentリソース最適化（CPU/Memory requests推奨値）
+- ✅ 適用可能なYAMLパッチ生成（Strategic Merge Patch形式）
+- ✅ Markdownレポート、JSONサマリー生成
+- ✅ labelSelectorとnamespace除外フィルタ
+- ✅ 包括的な入力検証とセキュリティ機能
+
 ## 前提条件
 
 以下の環境が整っていることを確認してください：
 
+- **Go 1.25.5以上**: セキュリティ脆弱性対策のため（ビルドする場合）
 - **Kubernetes クラスタ**: 稼働中のK8sクラスタへのアクセス権限
 - **kubectl**: `kubectl` コマンドが使用可能で、対象クラスタに接続できること
 - **Prometheus**: クラスタ内にPrometheusが導入済みで、以下のメトリクスが取得可能
   - `container_cpu_usage_seconds_total`
   - `container_memory_working_set_bytes`
-  - `kube_deployment_status_replicas`
-- **RBAC権限**: Deployment/Pod/HPAの読み取り権限（read-only）
-- **メトリクス保持期間**: Prometheusが最低7日間のメトリクスを保持していること
+- **RBAC権限**: Deployment/Podの読み取り権限（read-only）
+- **メトリクス保持期間**: Prometheusが最低5分間のメトリクスを保持していること（本番環境では7日間推奨）
+
+**セキュリティ要件**:
+- API認証情報は環境変数で管理（設定ファイルに含めない）
+- read-only権限のServiceAccountを使用
 
 ## Step 1: インストール
 
@@ -27,7 +40,7 @@
 
 ```bash
 # 最新リリースをダウンロード
-curl -LO https://github.com/your-org/kost/releases/latest/download/kost-linux-amd64
+curl -LO https://github.com/lot-koichi/kost/releases/latest/download/kost-linux-amd64
 
 # 実行権限を付与
 chmod +x kost-linux-amd64
@@ -42,11 +55,20 @@ kost version
 ### Go環境からのビルド
 
 ```bash
+# Go version確認（1.25.5以上必要）
+go version
+
 # リポジトリをクローン
-git clone https://github.com/your-org/kost.git
+git clone https://github.com/lot-koichi/kost.git
 cd kost
 
+# 依存関係のインストール
+go mod download
+
 # ビルド
+go build -o bin/kost ./cmd/kost
+
+# または Makefileを使用
 make build
 
 # バイナリを確認
@@ -58,7 +80,7 @@ make build
 ```bash
 # Dockerで実行
 docker run --rm -v ~/.kube:/root/.kube \
-  your-org/kost:latest version
+  lot-koichi/kost:latest version
 ```
 
 ## Step 2: RBAC権限の設定

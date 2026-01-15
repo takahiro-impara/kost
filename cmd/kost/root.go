@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/your-org/kost/internal/config"
+	"github.com/lot-koichi/kost/internal/config"
 )
 
 var (

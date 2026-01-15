@@ -37,8 +37,25 @@ vendor/
 .env.local
 .env.*.local
 
+# Configuration files with potential secrets
+config.yaml
+config-*.yaml
+kubeconfig
+*.kubeconfig
+
+# Security keys and certificates
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+
 # Logs
 *.log
+
+# Security scan reports
+gosec-report*.json
+trivy-report*.txt
 
 # OS specific
 Thumbs.db

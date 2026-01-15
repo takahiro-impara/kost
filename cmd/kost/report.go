@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/your-org/kost/internal/engine"
-	"github.com/your-org/kost/internal/k8s"
-	"github.com/your-org/kost/internal/metrics"
-	"github.com/your-org/kost/internal/patch"
-	"github.com/your-org/kost/internal/report"
-	"github.com/your-org/kost/internal/security"
+	"github.com/lot-koichi/kost/internal/engine"
+	"github.com/lot-koichi/kost/internal/k8s"
+	"github.com/lot-koichi/kost/internal/metrics"
+	"github.com/lot-koichi/kost/internal/patch"
+	"github.com/lot-koichi/kost/internal/report"
+	"github.com/lot-koichi/kost/internal/security"
 )
 
 var reportCmd = &cobra.Command{

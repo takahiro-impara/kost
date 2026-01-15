@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/your-org/kost/internal/engine"
+	"github.com/lot-koichi/kost/internal/engine"
 )
 
 func TestGenerateMarkdown(t *testing.T) {

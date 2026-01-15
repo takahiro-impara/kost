@@ -2,9 +2,19 @@
 
 **Feature Branch**: `001-mvp-core`
 **Created**: 2026-01-14
-**Updated**: 2026-01-14
-**Status**: Draft
+**Updated**: 2026-01-15
+**Status**: Implemented (P1-P2 完了、P3-P5 次フェーズ)
 **Input**: User description: "kost (Kubernetes Optimization & Sizing Tool) MVPコア機能の実装（HPA最適化、Claude Code LLM対応を含む）"
+
+**実装状況サマリー**:
+- ✅ User Story 1 (P1): Deploymentリソース最適化 - 実装完了・テスト済み
+- ✅ User Story 2 (P2): YAMLパッチ生成 - 実装完了・テスト済み
+- ⚠️ User Story 3 (P3): HPA最適化 - 次フェーズ対応
+- ⚠️ User Story 4 (P4): 複数LLMプロバイダ - 部分実装（設定のみ、テスト未実施）
+- ⚠️ User Story 5 (P5): AI説明生成 - 部分実装（テスト未実施）
+- ✅ セキュリティ強化: gosec 0件、入力検証97.7%カバレッジ
+- ✅ 単体テスト: 63.8%カバレッジ（目標60%達成）
+- ✅ E2Eテスト: 主要シナリオ合格
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -204,3 +214,162 @@ SREは多数のDeploymentがある場合、どこから改善すべきかの優�
 - **セキュリティ**: API認証情報は環境変数で管理し、設定ファイルに含めない。最小権限の原則に従い、Kubernetes APIへはread-only権限のみでアクセスする
 - **脆弱性管理**: 依存関係は定期的に更新し、既知の脆弱性を含むバージョンの使用を避ける。CI/CDパイプラインで自動スキャンを実施する
 - **入力検証**: 全てのユーザー入力（Namespace名、ラベルセレクタ、出力パス等）は適切にバリデーションし、injection攻撃を防止する
+
+---
+
+## セキュリティ実装詳細
+
+### 実装済みセキュリティ機能
+
+#### 1. 入力検証（internal/security/validation.go）
+
+**実装内容**: 全てのユーザー入力を検証し、injection攻撃を防止
+
+- **ValidateNamespace**: Kubernetes命名規則に準拠したNamespace検証
+  - 空文字列の拒否
+  - 大文字・特殊文字の拒否
+  - 長さ制限（63文字）
+  - 正規表現: `^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
+
+- **ValidateLabelSelector**: Label selector injection防止
+  - 引用符（'/"）の拒否
+  - セミコロン（;）の拒否
+  - その他の特殊文字の拒否
+
+- **ValidatePrometheusURL**: URL検証
+  - http/httpsスキームのみ許可
+  - 特殊文字の拒否
+  - 空文字列の拒否
+
+- **ValidateOutputPath**: パストラバーサル攻撃防止
+  - `..`パターンの検出と拒否
+  - センシティブディレクトリへのアクセス防止（/etc, /root, /sys, /proc, /dev）
+
+- **SanitizePromQLQuery**: PromQL injection防止
+  - SQLインジェクション的なパターンの検出（;, --, /*, */）
+  - クエリのサニタイゼーション
+
+- **MaskSensitiveValue**: ログ出力時のAPI keyマスキング
+  - 8文字以下: 完全マスク（`***`）
+  - 9文字以上: 先頭4文字と末尾4文字のみ表示（`sk-1...cdef`）
+
+**テストカバレッジ**: 97.7% (internal/security/validation_test.go)
+
+#### 2. ファイルパーミッション（gosec準拠）
+
+**実装内容**: セキュアなファイル・ディレクトリパーミッション設定
+
+- **ディレクトリ作成**: 0750 (owner: rwx, group: r-x, other: ---)
+- **ファイル作成**: 0600 (owner: rw-, group: ---, other: ---)
+- **適用箇所**: internal/report/writer.go
+
+#### 3. API認証情報管理
+
+**実装内容**: 環境変数のみでAPI認証情報を管理
+
+- **Kubernetes**: kubeconfigファイルまたはin-cluster認証
+- **OpenAI**: `OPENAI_API_KEY` 環境変数
+- **Claude**: `ANTHROPIC_API_KEY` 環境変数
+- **検証**: 設定ファイル読み込み時に環境変数の存在チェック（internal/config/config.go）
+- **禁止事項**: 設定ファイルに認証情報を含めない
+
+#### 4. RBAC最小権限
+
+**実装内容**: 読み取り専用権限のみ使用
+
+```yaml
+# examples/rbac.yaml
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list"]
+```
+
+**禁止操作**: create, update, delete, patch
+
+### セキュリティテスト結果
+
+#### gosec（静的セキュリティ解析）
+- **スキャンファイル数**: 21ファイル
+- **スキャンコード行数**: 2,226行
+- **検出問題**: 0件 ✅
+
+#### govulncheck（脆弱性スキャン）
+- **Go依存関係**: 脆弱性なし ✅
+- **Go標準ライブラリ**: 2件検出 ⚠️
+  - GO-2025-4175: crypto/x509 DNS制約の不適切な適用
+  - GO-2025-4155: crypto/x509 証明書検証時のリソース消費
+  - **対策**: Go 1.25.5以上へのアップグレード推奨
+  - **リスク**: 低（信頼できるPrometheus URLのみに接続）
+
+### .gitignore設定
+
+**機密情報の除外**:
+```gitignore
+# Configuration files with potential secrets
+config.yaml
+config-*.yaml
+kubeconfig
+*.kubeconfig
+
+# Security keys and certificates
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+
+# Security scan reports
+gosec-report*.json
+trivy-report*.txt
+```
+
+### 推奨セキュリティプラクティス
+
+#### 本番環境での使用
+1. **Go version**: 1.25.5以上を使用（crypto/x509脆弱性対策）
+2. **RBAC**: read-only権限のServiceAccountを使用
+3. **API keys**: 環境変数で管理、絶対に設定ファイルに含めない
+4. **TLS**: Prometheus接続時はTLS証明書検証を有効化（デフォルト）
+5. **ログ**: 本番環境ではセンシティブ情報がログに出力されないことを確認
+
+#### 開発環境
+1. **セキュリティスキャン**: コミット前にgosecを実行
+2. **依存関係チェック**: 定期的にgovulncheckを実行
+3. **テストカバレッジ**: セキュリティ関連コードは90%以上を目標
+
+#### CI/CD統合
+```yaml
+# GitHub Actions例
+- name: Security Scan
+  run: |
+    gosec ./...
+    govulncheck ./...
+```
+
+### 既知の制限事項
+
+1. **minikube環境**: containerラベルが不足（対応済み、id=~".*/.*"フィルタ使用）
+2. **Go標準ライブラリ脆弱性**: Go 1.25.5へのアップグレードで解決
+3. **TLS無効化**: 設定で可能だが、本番環境では非推奨
+
+### セキュリティドキュメント
+
+- [SECURITY_TEST_PLAN.md](../../SECURITY_TEST_PLAN.md) - 包括的なセキュリティチェックリスト
+- [TEST_RESULTS.md](../../TEST_RESULTS.md) - セキュリティスキャン結果詳細
+- [E2E_TEST_PLAN.md](../../E2E_TEST_PLAN.md) - セキュリティ関連E2Eテスト
+
+---
+
+**最終更新**: 2026-01-15
+**セキュリティレビュー**: 完了 ✅
+**OSS公開準備**: 完了 ✅

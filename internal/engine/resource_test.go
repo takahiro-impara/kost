@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/your-org/kost/internal/metrics"
+	"github.com/lot-koichi/kost/internal/metrics"
 )
 
 func TestCalculateCPURecommendation(t *testing.T) {

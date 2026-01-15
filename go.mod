@@ -1,4 +1,4 @@
-module github.com/your-org/kost
+module github.com/lot-koichi/kost
 
 go 1.25.3
 

@@ -1,5 +1,9 @@
 # kost (Kubernetes Optimization & Sizing Tool)
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Go Version](https://img.shields.io/badge/Go-1.25.5%2B-00ADD8?logo=go)](https://go.dev/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/lot-koichi/kost/pulls)
+
 Kubernetes Deploymentのリソース設定（requests/limits）およびHPA設定（minReplicas/maxReplicas）を最適化するCLIツールです。
 
 ## 概要
@@ -20,12 +24,12 @@ kostは、Prometheusメトリクスから過去の実績データを取得し、
 
 ```bash
 # バイナリダウンロード
-curl -LO https://github.com/your-org/kost/releases/latest/download/kost-linux-amd64
+curl -LO https://github.com/lot-koichi/kost/releases/latest/download/kost-linux-amd64
 chmod +x kost-linux-amd64
 sudo mv kost-linux-amd64 /usr/local/bin/kost
 
 # Go環境からビルド
-git clone https://github.com/your-org/kost.git
+git clone https://github.com/lot-koichi/kost.git
 cd kost
 make build
 ```
@@ -289,9 +293,12 @@ kind delete cluster --name kost-test
 
 ## 前提条件
 
+- **Go 1.25.5以上**（セキュリティ脆弱性対策のため）
 - Kubernetes クラスタへのアクセス権限
 - Prometheusが導入済み（必要なメトリクスが取得可能）
 - RBAC権限（Deployment/Pod/HPAの読み取り専用）
+
+**重要**: Go 1.25.3以前のバージョンには既知のセキュリティ脆弱性（GO-2025-4175, GO-2025-4155）が存在します。Go 1.25.5以上へのアップグレードを強く推奨します。
 
 ## セキュリティ
 
@@ -327,9 +334,22 @@ kostは以下の入力を検証し、セキュリティ攻撃を防止します�
 ### 脆弱性管理
 
 kostのCI/CDパイプラインには以下のセキュリティスキャンが組み込まれています：
-- **gosec**: Go言語の静的セキュリティ解析
-- **govulncheck**: Go依存関係の既知脆弱性スキャン
+- **gosec**: Go言語の静的セキュリティ解析 ✅ クリーン（0件）
+- **govulncheck**: Go依存関係の既知脆弱性スキャン ⚠️ Go標準ライブラリの既知脆弱性あり（対策方法記載）
 - **Trivy**: コンテナイメージおよびファイルシステムの脆弱性スキャン
+
+詳細なセキュリティテスト結果は [TEST_RESULTS.md](./TEST_RESULTS.md) を参照してください。
+
+**セキュリティスキャンの実行方法**:
+```bash
+# gosec
+go install github.com/securego/gosec/v2/cmd/gosec@latest
+gosec ./...
+
+# govulncheck
+go install golang.org/x/vuln/cmd/govulncheck@latest
+govulncheck ./...
+```
 
 ### TLS証明書検証
 
@@ -338,10 +358,16 @@ kostのCI/CDパイプラインには以下のセキュリティスキャンが�
 
 ## ドキュメント
 
+### 機能仕様
 - [クイックスタートガイド](./specs/001-mvp-core/quickstart.md)
 - [機能仕様書](./specs/001-mvp-core/spec.md)
 - [データモデル](./specs/001-mvp-core/data-model.md)
 - [技術調査](./specs/001-mvp-core/research.md)
+
+### テストとセキュリティ
+- [テスト結果レポート](./TEST_RESULTS.md) - セキュリティスキャン結果、E2Eテスト結果、既知の問題
+- [セキュリティテスト計画](./SECURITY_TEST_PLAN.md) - セキュリティチェックリスト、ペネトレーションテスト
+- [E2Eテスト計画](./E2E_TEST_PLAN.md) - 包括的なテストシナリオ
 
 ## ライセンス
 

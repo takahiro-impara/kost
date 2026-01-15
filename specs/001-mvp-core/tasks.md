@@ -61,83 +61,91 @@
 
 ## Phase 3: User Story 1 - Deploymentリソース最適化の分析と推奨値提示 (Priority: P1) 🎯 MVP
 
+**Status**: ✅ 実装完了・テスト済み
+
 **Goal**: DeploymentのCPU/Memory requests/limitsの過剰・過小判定と推奨値算出
 
-**Independent Test**: 対象NamespaceにDeploymentが1つ以上存在し、Prometheusからメトリクスが取得できる状態で、`scan`→`suggest`→`report`コマンドを順次実行し、レポートファイルに推奨値と根拠が記載されていることを確認する
+**Independent Test**: ✅ 合格（minikube環境でE2Eテスト実施済み）
 
 ### Implementation for User Story 1
 
 #### Scan Command (K8s Data Acquisition)
 
-- [ ] T023 [P] [US1] Implement Deployment listing in internal/k8s/deployment.go with client-go
-- [ ] T024 [P] [US1] Implement Container resource extraction in internal/k8s/deployment.go
-- [ ] T025 [US1] Create scan command in cmd/kost/scan.go with namespace flag
-- [ ] T026 [US1] Add Deployment filtering logic (namespace exclusion, label selector) in internal/k8s/deployment.go
-- [ ] T027 [US1] Add error handling for K8s API access failures with actionable messages
+- [X] T023 [P] [US1] Implement Deployment listing in internal/k8s/deployment.go with client-go
+- [X] T024 [P] [US1] Implement Container resource extraction in internal/k8s/deployment.go
+- [X] T025 [US1] Create scan command in cmd/kost/scan.go with namespace flag
+- [X] T026 [US1] Add Deployment filtering logic (namespace exclusion, label selector) in internal/k8s/deployment.go
+- [X] T027 [US1] Add error handling for K8s API access failures with actionable messages
 
 #### Suggest Command (Metrics & Recommendation)
 
-- [ ] T028 [P] [US1] Create Metrics struct in internal/metrics/types.go
-- [ ] T029 [P] [US1] Implement CPU metrics query in internal/metrics/query.go with PromQL
-- [ ] T030 [P] [US1] Implement Memory metrics query in internal/metrics/query.go with PromQL
-- [ ] T031 [US1] Implement percentile calculation (P50/P95/P99) in internal/metrics/stats.go using montanaflynn/stats
-- [ ] T032 [P] [US1] Create ResourceRecommendation struct in internal/engine/types.go
-- [ ] T033 [US1] Implement CPU recommendation calculator in internal/engine/resource.go (P95 * safety factor)
-- [ ] T034 [US1] Implement Memory recommendation calculator in internal/engine/resource.go (P95 * safety factor)
-- [ ] T035 [US1] Implement judgement logic (overprovisioned/underprovisioned/appropriate) in internal/engine/resource.go
-- [ ] T036 [US1] Implement saving ratio calculation in internal/engine/resource.go
-- [ ] T037 [US1] Create suggest command in cmd/kost/suggest.go
-- [ ] T038 [US1] Add error handling for Prometheus connection failures with troubleshooting steps
+- [X] T028 [P] [US1] Create Metrics struct in internal/metrics/types.go
+- [X] T029 [P] [US1] Implement CPU metrics query in internal/metrics/query.go with PromQL (minikube対応: containerラベル不足に対応)
+- [X] T030 [P] [US1] Implement Memory metrics query in internal/metrics/query.go with PromQL
+- [X] T031 [US1] Implement percentile calculation (P50/P95/P99) in internal/metrics/stats.go using montanaflynn/stats
+- [X] T032 [P] [US1] Create ResourceRecommendation struct in internal/engine/types.go
+- [X] T033 [US1] Implement CPU recommendation calculator in internal/engine/resource.go (P95 * safety factor)
+- [X] T034 [US1] Implement Memory recommendation calculator in internal/engine/resource.go (P95 * safety factor)
+- [X] T035 [US1] Implement judgement logic (overprovisioned/underprovisioned/appropriate) in internal/engine/resource.go
+- [X] T036 [US1] Implement saving ratio calculation in internal/engine/resource.go
+- [X] T037 [US1] Create suggest command in cmd/kost/suggest.go
+- [X] T038 [US1] Add error handling for Prometheus connection failures with troubleshooting steps
 
 #### Report Command (Markdown/JSON/Patch Output)
 
-- [ ] T039 [P] [US1] Create Report struct in internal/report/types.go
-- [ ] T040 [P] [US1] Implement Markdown template for report in internal/report/markdown.go
-- [ ] T041 [P] [US1] Implement JSON summary generation in internal/report/json.go
-- [ ] T042 [P] [US1] Implement resource patch generation (Strategic Merge Patch) in internal/patch/resource.go
-- [ ] T043 [US1] Create report command in cmd/kost/report.go
-- [ ] T044 [US1] Add output directory creation and file writing logic in internal/report/writer.go
-- [ ] T045 [US1] Add Top Findings sorting logic (by saving ratio) in internal/report/markdown.go
+- [X] T039 [P] [US1] Create Report struct in internal/report/types.go
+- [X] T040 [P] [US1] Implement Markdown template for report in internal/report/markdown.go
+- [X] T041 [P] [US1] Implement JSON summary generation in internal/report/json.go
+- [X] T042 [P] [US1] Implement resource patch generation (Strategic Merge Patch) in internal/patch/resource.go
+- [X] T043 [US1] Create report command in cmd/kost/report.go
+- [X] T044 [US1] Add output directory creation and file writing logic in internal/report/writer.go (セキュアなパーミッション: 0600/0750)
+- [X] T045 [US1] Add Top Findings sorting logic (by saving ratio) in internal/report/markdown.go
 
 #### Unit Tests for User Story 1
 
-- [ ] T046 [P] [US1] Unit test for Config loading in internal/config/config_test.go
-- [ ] T047 [P] [US1] Unit test for percentile calculation in internal/metrics/stats_test.go
-- [ ] T048 [P] [US1] Unit test for CPU recommendation calculator in internal/engine/resource_test.go
-- [ ] T049 [P] [US1] Unit test for Memory recommendation calculator in internal/engine/resource_test.go
-- [ ] T050 [P] [US1] Unit test for judgement logic in internal/engine/resource_test.go
-- [ ] T051 [P] [US1] Unit test for saving ratio calculation in internal/engine/resource_test.go
-- [ ] T052 [P] [US1] Unit test for Markdown report generation in internal/report/markdown_test.go
-- [ ] T053 [P] [US1] Unit test for patch generation in internal/patch/resource_test.go
+- [X] T046 [P] [US1] Unit test for Config loading in internal/config/config_test.go (カバレッジ80%)
+- [X] T047 [P] [US1] Unit test for percentile calculation in internal/metrics/stats_test.go (カバレッジ28.6%)
+- [X] T048 [P] [US1] Unit test for CPU recommendation calculator in internal/engine/resource_test.go (カバレッジ100%)
+- [X] T049 [P] [US1] Unit test for Memory recommendation calculator in internal/engine/resource_test.go (カバレッジ100%)
+- [X] T050 [P] [US1] Unit test for judgement logic in internal/engine/resource_test.go (カバレッジ100%)
+- [X] T051 [P] [US1] Unit test for saving ratio calculation in internal/engine/resource_test.go (カバレッジ100%)
+- [X] T052 [P] [US1] Unit test for Markdown report generation in internal/report/markdown_test.go (カバレッジ87.9%)
+- [X] T053 [P] [US1] Unit test for patch generation in internal/patch/resource_test.go (カバレッジ89.2%)
 
-**Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
+**Checkpoint**: ✅ User Story 1完全実装・テスト完了（総合カバレッジ63.8%）
 
 ---
 
 ## Phase 4: User Story 2 - 適用可能なYAMLパッチの生成 (Priority: P2)
 
+**Status**: ✅ 実装完了・テスト済み
+
 **Goal**: 推奨値を反映したStrategic Merge Patch形式のYAMLファイル生成
 
-**Independent Test**: User Story 1の完了後、`patches/`ディレクトリ配下にNamespaceとDeployment名ごとのYAMLファイルが生成され、その内容が推奨値を反映したStrategic Merge Patch形式になっていることを確認する
+**Independent Test**: ✅ 合格（kubectl dry-run validation通過）
 
 ### Implementation for User Story 2
 
-- [ ] T054 [P] [US2] Enhance patch generation to include namespace directory structure in internal/patch/resource.go
-- [ ] T055 [US2] Implement patch file naming convention (<deployment>.yaml) in internal/patch/resource.go
-- [ ] T056 [US2] Add patch validation logic (kubectl dry-run compatible) in internal/patch/resource.go
-- [ ] T057 [US2] Add patch writing to report command in cmd/kost/report.go
-- [ ] T058 [P] [US2] Unit test for patch file structure in internal/patch/resource_test.go
-- [ ] T059 [P] [US2] Unit test for patch content validation in internal/patch/resource_test.go
+- [X] T054 [P] [US2] Enhance patch generation to include namespace directory structure in internal/patch/resource.go
+- [X] T055 [US2] Implement patch file naming convention (<deployment>.yaml) in internal/patch/resource.go
+- [X] T056 [US2] Add patch validation logic (kubectl dry-run compatible) in internal/patch/resource.go
+- [X] T057 [US2] Add patch writing to report command in cmd/kost/report.go
+- [X] T058 [P] [US2] Unit test for patch file structure in internal/patch/resource_test.go
+- [X] T059 [P] [US2] Unit test for patch content validation in internal/patch/resource_test.go
 
-**Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
+**Checkpoint**: ✅ User Stories 1 AND 2 両方完全動作確認済み
 
 ---
 
 ## Phase 5: User Story 3 - HPA設定の最適化推奨 (Priority: P3)
 
+**Status**: ⚠️ 次フェーズ対応（MVP範囲外）
+
 **Goal**: HPA minReplicas/maxReplicasの推奨値算出とレポート出力
 
-**Independent Test**: 対象NamespaceにHPA設定済みDeploymentが1つ以上存在し、過去7日間のPod数メトリクス（kube_deployment_status_replicas）が取得できる状態で、`scan`→`suggest`→`report`コマンドを実行し、レポートにHPA推奨値（minReplicas/maxReplicas）と根拠が記載されていることを確認する
+**Independent Test**: 未実施
+
+**理由**: MVP段階ではリソース最適化（P1-P2）を優先。HPA最適化は次フェーズで実装予定
 
 ### Implementation for User Story 3
 

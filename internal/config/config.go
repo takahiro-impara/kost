@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/viper"
-	"github.com/your-org/kost/internal/security"
+	"github.com/lot-koichi/kost/internal/security"
 )
 
 // Config represents the application configuration

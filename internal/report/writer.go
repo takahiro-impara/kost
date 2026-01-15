@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/your-org/kost/internal/security"
+	"github.com/lot-koichi/kost/internal/security"
 )
 
 // Writer handles writing report outputs to files
@@ -30,11 +30,13 @@ func (w *Writer) WriteMarkdown(filename string, content string) error {
 	path := filepath.Join(w.baseDir, filename)
 
 	// Create base directory if it doesn't exist
-	if err := os.MkdirAll(w.baseDir, 0755); err != nil {
+	// Use 0750 for security (gosec G301)
+	if err := os.MkdirAll(w.baseDir, 0750); err != nil {
 		return fmt.Errorf("failed to create output directory %s: %w", w.baseDir, err)
 	}
 
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	// Use 0600 for security (gosec G306)
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
 		return fmt.Errorf("failed to write markdown file %s: %w", path, err)
 	}
 
@@ -46,11 +48,13 @@ func (w *Writer) WriteJSON(filename string, content string) error {
 	path := filepath.Join(w.baseDir, filename)
 
 	// Create base directory if it doesn't exist
-	if err := os.MkdirAll(w.baseDir, 0755); err != nil {
+	// Use 0750 for security (gosec G301)
+	if err := os.MkdirAll(w.baseDir, 0750); err != nil {
 		return fmt.Errorf("failed to create output directory %s: %w", w.baseDir, err)
 	}
 
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	// Use 0600 for security (gosec G306)
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
 		return fmt.Errorf("failed to write JSON file %s: %w", path, err)
 	}
 
@@ -62,12 +66,14 @@ func (w *Writer) WritePatch(subdir string, filename string, content string) erro
 	dir := filepath.Join(w.baseDir, subdir)
 
 	// Create patch directory if it doesn't exist
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	// Use 0750 for security (gosec G301)
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return fmt.Errorf("failed to create patch directory %s: %w", dir, err)
 	}
 
 	path := filepath.Join(dir, filename)
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	// Use 0600 for security (gosec G306)
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
 		return fmt.Errorf("failed to write patch file %s: %w", path, err)
 	}
 

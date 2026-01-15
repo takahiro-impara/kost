@@ -3,8 +3,8 @@ package patch
 import (
 	"fmt"
 
-	"github.com/your-org/kost/internal/engine"
-	"github.com/your-org/kost/internal/k8s"
+	"github.com/lot-koichi/kost/internal/engine"
+	"github.com/lot-koichi/kost/internal/k8s"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/yaml"
 )
