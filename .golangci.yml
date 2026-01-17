@@ -25,6 +25,14 @@ linters-settings:
       - octalLiteral
       - whyNoLint
       - wrapperFunc
+  gosec:
+    # Enable all gosec rules for comprehensive security scanning
+    excludes: []
+    # G104: Audit errors not checked
+    # G204: Audit use of command execution
+    # G304: File path provided as taint input
+    # G401/G501: Weak crypto algorithms
+    # All other rules enabled by default
 
 linters:
   disable-all: true
@@ -55,16 +63,6 @@ linters:
     - unparam
     - unused
     - whitespace
-
-linters-settings:
-  gosec:
-    # Enable all gosec rules for comprehensive security scanning
-    excludes: []
-    # G104: Audit errors not checked
-    # G204: Audit use of command execution
-    # G304: File path provided as taint input
-    # G401/G501: Weak crypto algorithms
-    # All other rules enabled by default
 
 issues:
   exclude-rules:
