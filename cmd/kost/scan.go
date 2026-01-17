@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/lot-koichi/kost/internal/k8s"
-	"github.com/lot-koichi/kost/internal/security"
+	"github.com/takahiro-impara/kost/internal/k8s"
+	"github.com/takahiro-impara/kost/internal/security"
 )
 
 // validateNamespace validates namespace input

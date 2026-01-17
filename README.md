@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Version](https://img.shields.io/badge/Go-1.25.5%2B-00ADD8?logo=go)](https://go.dev/)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/lot-koichi/kost/pulls)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/takahiro-impara/kost/pulls)
 
 A CLI tool to optimize Kubernetes Deployment resource configurations (requests/limits) and HPA settings (minReplicas/maxReplicas).
 
@@ -24,12 +24,12 @@ kost retrieves historical performance data from Prometheus metrics, performs sta
 
 ```bash
 # Download binary
-curl -LO https://github.com/lot-koichi/kost/releases/latest/download/kost-linux-amd64
+curl -LO https://github.com/takahiro-impara/kost/releases/latest/download/kost-linux-amd64
 chmod +x kost-linux-amd64
 sudo mv kost-linux-amd64 /usr/local/bin/kost
 
 # Build from Go source
-git clone https://github.com/lot-koichi/kost.git
+git clone https://github.com/takahiro-impara/kost.git
 cd kost
 make build
 ```

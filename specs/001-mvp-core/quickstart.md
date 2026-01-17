@@ -40,7 +40,7 @@ Ensure the following environment is ready:
 
 ```bash
 # Download latest release
-curl -LO https://github.com/lot-koichi/kost/releases/latest/download/kost-linux-amd64
+curl -LO https://github.com/takahiro-impara/kost/releases/latest/download/kost-linux-amd64
 
 # Grant execute permission
 chmod +x kost-linux-amd64
@@ -59,7 +59,7 @@ kost version
 go version
 
 # Clone repository
-git clone https://github.com/lot-koichi/kost.git
+git clone https://github.com/takahiro-impara/kost.git
 cd kost
 
 # Install dependencies
@@ -80,7 +80,7 @@ make build
 ```bash
 # Run with Docker
 docker run --rm -v ~/.kube:/root/.kube \
-  lot-koichi/kost:latest version
+  takahiro-impara/kost:latest version
 ```
 
 ## Step 2: RBAC Permission Setup

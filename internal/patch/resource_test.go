@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/lot-koichi/kost/internal/engine"
+	"github.com/takahiro-impara/kost/internal/engine"
 )
 
 func TestGenerateResourcePatch(t *testing.T) {

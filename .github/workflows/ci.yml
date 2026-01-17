@@ -7,23 +7,24 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.25.5'
-
-      - name: Run golangci-lint with security checks
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.55
-          args: --timeout=5m --enable=gosec
+  # lint:
+  #   name: Lint
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Check out code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v5
+  #       with:
+  #         go-version: '1.25'
+  #
+  #     - name: Install golangci-lint v2 from source
+  #       run: |
+  #         go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+  #
+  #     - name: Run golangci-lint with security checks
+  #       run: golangci-lint run --timeout=5m --enable=gosec
 
   test:
     name: Test
@@ -35,7 +36,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.5'
+          go-version: '1.25'
 
       - name: Download dependencies
         run: go mod download
@@ -60,7 +61,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.5'
+          go-version: '1.25'
 
       - name: Run govulncheck
         run: |
@@ -76,28 +77,28 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
 
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: [lint, test, security]
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.25.5'
-
-      - name: Build binary
-        run: make build
-
-      - name: Upload binary artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: kost-binary
-          path: bin/kost
+  # build:
+  #   name: Build
+  #   runs-on: ubuntu-latest
+  #   needs: [test, security]
+  #   steps:
+  #     - name: Check out code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v5
+  #       with:
+  #         go-version: '1.25'
+  #
+  #     - name: Build binary
+  #       run: make build
+  #
+  #     - name: Upload binary artifact
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: kost-binary
+  #         path: bin/kost

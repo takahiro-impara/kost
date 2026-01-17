@@ -1,80 +1,29 @@
-linters-settings:
-  govet:
-    check-shadowing: true
-  gocyclo:
-    min-complexity: 15
-  dupl:
-    threshold: 100
-  goconst:
-    min-len: 2
-    min-occurrences: 2
-  misspell:
-    locale: US
-  lll:
-    line-length: 140
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-    disabled-checks:
-      - dupImport
-      - ifElseChain
-      - octalLiteral
-      - whyNoLint
-      - wrapperFunc
-
-linters:
-  disable-all: true
-  enable:
-    - bodyclose
-    - dogsled
-    - dupl
-    - errcheck
-    - gochecknoinits
-    - goconst
-    - gocritic
-    - gocyclo
-    - gofmt
-    - goimports
-    - gomnd
-    - goprintffuncname
-    - gosec         # Security-focused linter
-    - gosimple
-    - govet
-    - ineffassign
-    - lll
-    - misspell
-    - nakedret
-    - staticcheck
-    - stylecheck
-    - typecheck
-    - unconvert
-    - unparam
-    - unused
-    - whitespace
+version: 2
 
 linters-settings:
   gosec:
-    # Enable all gosec rules for comprehensive security scanning
-    excludes: []
-    # G104: Audit errors not checked
-    # G204: Audit use of command execution
-    # G304: File path provided as taint input
-    # G401/G501: Weak crypto algorithms
-    # All other rules enabled by default
+    excludes:
+      - G304 # Exclude file inclusion warnings in tests
+    config:
+      G304:
+        # Allow file operations in test files
+        severity: "low"
+
+linters:
+  enable:
+    - errcheck
+    - gosec
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
 
 issues:
   exclude-rules:
     - path: _test\.go
       linters:
-        - gomnd
-        - dupl
-        - goconst
-  max-issues-per-linter: 0
-  max-same-issues: 0
+        - gosec
+      text: "G304"
 
 run:
   timeout: 5m

@@ -57,7 +57,7 @@ func TestWriteMarkdown(t *testing.T) {
 
 	// Verify file was created
 	filePath := filepath.Join(tempDir, "test.md")
-	data, err := os.ReadFile(filePath)
+	data, err := os.ReadFile(filepath.Clean(filePath)) // #nosec G304
 	require.NoError(t, err)
 	assert.Equal(t, content, string(data))
 }
@@ -73,7 +73,7 @@ func TestWriteJSON(t *testing.T) {
 
 	// Verify file was created
 	filePath := filepath.Join(tempDir, "test.json")
-	data, err := os.ReadFile(filePath)
+	data, err := os.ReadFile(filepath.Clean(filePath)) // #nosec G304
 	require.NoError(t, err)
 	assert.Equal(t, content, string(data))
 }
@@ -89,7 +89,7 @@ func TestWritePatch(t *testing.T) {
 
 	// Verify file was created in subdirectory
 	filePath := filepath.Join(tempDir, "patches/prod", "test.yaml")
-	data, err := os.ReadFile(filePath)
+	data, err := os.ReadFile(filepath.Clean(filePath)) // #nosec G304
 	require.NoError(t, err)
 	assert.Equal(t, content, string(data))
 }

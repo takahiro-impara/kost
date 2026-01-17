@@ -11,7 +11,7 @@ type Deployment struct {
 
 // Container represents a container within a Deployment
 type Container struct {
-	Name           string
+	Name            string
 	CPURequestMilli *int // CPU requests in millicores (nil if not set)
 	MemRequestMi    *int // Memory requests in MiB (nil if not set)
 	CPULimitMilli   *int // CPU limits in millicores (nil if not set)

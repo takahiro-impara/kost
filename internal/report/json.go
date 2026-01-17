@@ -7,32 +7,32 @@ import (
 
 // JSONSummary represents the summary data for JSON output
 type JSONSummary struct {
-	GeneratedAt            string                 `json:"generatedAt"`
-	Namespace              string                 `json:"namespace"`
-	AnalysisWindow         string                 `json:"analysisWindow"`
-	Percentile             string                 `json:"percentile"`
-	SafetyFactor           float64                `json:"safetyFactor"`
-	TotalContainers        int                    `json:"totalContainers"`
-	OverprovisionedCount   int                    `json:"overprovisionedCount"`
-	UnderprovisionedCount  int                    `json:"underprovisionedCount"`
-	AppropriateCount       int                    `json:"appropriateCount"`
-	TotalSavingsPercent    float64                `json:"totalSavingsPercent"`
-	ResourceRecommendations []JSONResourceRec     `json:"resourceRecommendations"`
-	HPARecommendations     []JSONHPARec          `json:"hpaRecommendations,omitempty"`
+	GeneratedAt             string            `json:"generatedAt"`
+	Namespace               string            `json:"namespace"`
+	AnalysisWindow          string            `json:"analysisWindow"`
+	Percentile              string            `json:"percentile"`
+	SafetyFactor            float64           `json:"safetyFactor"`
+	TotalContainers         int               `json:"totalContainers"`
+	OverprovisionedCount    int               `json:"overprovisionedCount"`
+	UnderprovisionedCount   int               `json:"underprovisionedCount"`
+	AppropriateCount        int               `json:"appropriateCount"`
+	TotalSavingsPercent     float64           `json:"totalSavingsPercent"`
+	ResourceRecommendations []JSONResourceRec `json:"resourceRecommendations"`
+	HPARecommendations      []JSONHPARec      `json:"hpaRecommendations,omitempty"`
 }
 
 // JSONResourceRec represents a single resource recommendation in JSON format
 type JSONResourceRec struct {
-	Deployment             string      `json:"deployment"`
-	Container              string      `json:"container"`
-	CurrentCPURequestMilli *int        `json:"currentCpuRequestMilli"`
-	RecommendedCPUMilli    int         `json:"recommendedCpuMilli"`
-	CPUJudgement           string      `json:"cpuJudgement"`
-	CPUSavingRatio         float64     `json:"cpuSavingRatio"`
-	CurrentMemRequestMi    *int        `json:"currentMemRequestMi"`
-	RecommendedMemMi       int         `json:"recommendedMemMi"`
-	MemJudgement           string      `json:"memJudgement"`
-	MemSavingRatio         float64     `json:"memSavingRatio"`
+	Deployment             string        `json:"deployment"`
+	Container              string        `json:"container"`
+	CurrentCPURequestMilli *int          `json:"currentCpuRequestMilli"`
+	RecommendedCPUMilli    int           `json:"recommendedCpuMilli"`
+	CPUJudgement           string        `json:"cpuJudgement"`
+	CPUSavingRatio         float64       `json:"cpuSavingRatio"`
+	CurrentMemRequestMi    *int          `json:"currentMemRequestMi"`
+	RecommendedMemMi       int           `json:"recommendedMemMi"`
+	MemJudgement           string        `json:"memJudgement"`
+	MemSavingRatio         float64       `json:"memSavingRatio"`
 	Rationale              JSONRationale `json:"rationale"`
 }
 
@@ -47,14 +47,14 @@ type JSONRationale struct {
 
 // JSONHPARec represents an HPA recommendation in JSON format
 type JSONHPARec struct {
-	Deployment             string  `json:"deployment"`
-	HPAName                string  `json:"hpaName"`
-	CurrentMinReplicas     int     `json:"currentMinReplicas"`
-	RecommendedMinReplicas int     `json:"recommendedMinReplicas"`
-	MinJudgement           string  `json:"minJudgement"`
-	CurrentMaxReplicas     int     `json:"currentMaxReplicas"`
-	RecommendedMaxReplicas int     `json:"recommendedMaxReplicas"`
-	MaxJudgement           string  `json:"maxJudgement"`
+	Deployment             string `json:"deployment"`
+	HPAName                string `json:"hpaName"`
+	CurrentMinReplicas     int    `json:"currentMinReplicas"`
+	RecommendedMinReplicas int    `json:"recommendedMinReplicas"`
+	MinJudgement           string `json:"minJudgement"`
+	CurrentMaxReplicas     int    `json:"currentMaxReplicas"`
+	RecommendedMaxReplicas int    `json:"recommendedMaxReplicas"`
+	MaxJudgement           string `json:"maxJudgement"`
 }
 
 // GenerateJSON generates a JSON summary from a report
