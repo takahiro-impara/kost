@@ -100,10 +100,10 @@ func TestCalculateMemoryRecommendation(t *testing.T) {
 
 func TestJudgeCPU(t *testing.T) {
 	tests := []struct {
-		name        string
-		currentCPU  *int
-		p95         float64
-		expected    string
+		name       string
+		currentCPU *int
+		p95        float64
+		expected   string
 	}{
 		{
 			name:       "not set",
@@ -245,9 +245,9 @@ func TestGenerateResourceRecommendation(t *testing.T) {
 		currentMem,
 		cpuMetrics,
 		memMetrics,
-		1.2,  // safetyFactor
-		20,   // minCPUMilli
-		64,   // minMemMi
+		1.2, // safetyFactor
+		20,  // minCPUMilli
+		64,  // minMemMi
 	)
 
 	assert.NotNil(t, rec)
@@ -258,9 +258,9 @@ func TestGenerateResourceRecommendation(t *testing.T) {
 	assert.Equal(t, 120, rec.RecommendedCPURequestMilli) // 100 * 1.2 = 120
 	assert.Equal(t, 240, rec.RecommendedMemRequestMi)    // 200 * 1.2 = 240
 	assert.Equal(t, "overprovisioned", rec.CPUJudgement) // 300 > 100 * 2.0
-	assert.Equal(t, "appropriate", rec.MemJudgement)      // 200 * 1.1 <= 400 <= 200 * 2.0
-	assert.InDelta(t, 0.6, rec.CPUSavingRatio, 0.01)      // (300 - 120) / 300
-	assert.InDelta(t, 0.4, rec.MemSavingRatio, 0.01)      // (400 - 240) / 400
+	assert.Equal(t, "appropriate", rec.MemJudgement)     // 200 * 1.1 <= 400 <= 200 * 2.0
+	assert.InDelta(t, 0.6, rec.CPUSavingRatio, 0.01)     // (300 - 120) / 300
+	assert.InDelta(t, 0.4, rec.MemSavingRatio, 0.01)     // (400 - 240) / 400
 	assert.Equal(t, 100.0, rec.Rationale.CPUP95)
 	assert.Equal(t, 200.0, rec.Rationale.MemP95)
 	assert.Equal(t, 1.2, rec.Rationale.SafetyFactor)

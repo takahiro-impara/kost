@@ -150,21 +150,21 @@ type MarkdownFinding struct {
 
 // MarkdownData represents data for the markdown template
 type MarkdownData struct {
-	GeneratedAt            time.Time
-	Namespace              string
-	Window                 string
-	Percentile             string
-	SafetyFactor           float64
-	CPUPercentile          float64
-	MemPercentile          float64
-	TotalContainers        int
-	OverprovisionedCount   int
-	UnderprovisionedCount  int
-	AppropriateCount       int
-	TotalSavingsPercent    float64
-	TopFindings            []MarkdownFinding
-	PatchFiles             []string
-	PatchDir               string
+	GeneratedAt           time.Time
+	Namespace             string
+	Window                string
+	Percentile            string
+	SafetyFactor          float64
+	CPUPercentile         float64
+	MemPercentile         float64
+	TotalContainers       int
+	OverprovisionedCount  int
+	UnderprovisionedCount int
+	AppropriateCount      int
+	TotalSavingsPercent   float64
+	TopFindings           []MarkdownFinding
+	PatchFiles            []string
+	PatchDir              string
 }
 
 // GenerateMarkdown generates a markdown report from recommendations
@@ -259,21 +259,21 @@ func GenerateMarkdown(report *Report) (string, error) {
 
 	// Prepare template data
 	data := MarkdownData{
-		GeneratedAt:            report.GeneratedAt,
-		Namespace:              report.Namespace,
-		Window:                 report.Window,
-		Percentile:             report.Percentile,
-		SafetyFactor:           report.SafetyFactor,
-		CPUPercentile:          95.0, // TODO: Get from config
-		MemPercentile:          95.0, // TODO: Get from config
-		TotalContainers:        len(report.ResourceRecommendations),
-		OverprovisionedCount:   overprovisioned,
-		UnderprovisionedCount:  underprovisioned,
-		AppropriateCount:       appropriate,
-		TotalSavingsPercent:    totalSavingsPercent,
-		TopFindings:            topFindings,
-		PatchFiles:             patchFiles,
-		PatchDir:               fmt.Sprintf("patches/%s/", report.Namespace),
+		GeneratedAt:           report.GeneratedAt,
+		Namespace:             report.Namespace,
+		Window:                report.Window,
+		Percentile:            report.Percentile,
+		SafetyFactor:          report.SafetyFactor,
+		CPUPercentile:         95.0, // TODO: Get from config
+		MemPercentile:         95.0, // TODO: Get from config
+		TotalContainers:       len(report.ResourceRecommendations),
+		OverprovisionedCount:  overprovisioned,
+		UnderprovisionedCount: underprovisioned,
+		AppropriateCount:      appropriate,
+		TotalSavingsPercent:   totalSavingsPercent,
+		TopFindings:           topFindings,
+		PatchFiles:            patchFiles,
+		PatchDir:              fmt.Sprintf("patches/%s/", report.Namespace),
 	}
 
 	// Parse and execute template
