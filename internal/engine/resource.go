@@ -3,7 +3,7 @@ package engine
 import (
 	"math"
 
-	"github.com/lot-koichi/kost/internal/metrics"
+	"github.com/takahiro-impara/kost/internal/metrics"
 )
 
 // CalculateCPURecommendation calculates recommended CPU requests

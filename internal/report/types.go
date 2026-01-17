@@ -3,7 +3,7 @@ package report
 import (
 	"time"
 
-	"github.com/lot-koichi/kost/internal/engine"
+	"github.com/takahiro-impara/kost/internal/engine"
 )
 
 // Report represents the final output report

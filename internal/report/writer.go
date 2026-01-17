@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/lot-koichi/kost/internal/security"
+	"github.com/takahiro-impara/kost/internal/security"
 )
 
 // Writer handles writing report outputs to files
