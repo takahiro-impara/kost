@@ -210,13 +210,15 @@ func GenerateMarkdown(report *Report) (string, error) {
 	// Build top findings
 	topFindings := []MarkdownFinding{}
 	for i, rec := range sortedRecs {
-		status := "📊 Needs Attention"
+		var status string
 		if rec.CPUJudgement == "overprovisioned" || rec.MemJudgement == "overprovisioned" {
 			status = "📉 Overprovisioned"
 		} else if rec.CPUJudgement == "underprovisioned" || rec.MemJudgement == "underprovisioned" {
 			status = "📈 Underprovisioned"
-		} else {
+		} else if rec.CPUJudgement == "appropriate" && rec.MemJudgement == "appropriate" {
 			status = "✅ Appropriate"
+		} else {
+			status = "📊 Needs Attention"
 		}
 
 		finding := MarkdownFinding{
